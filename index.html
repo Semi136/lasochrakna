@@ -1,0 +1,2750 @@
+<!DOCTYPE html>
+<html lang="sv" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Läs & Räkna Lugnt – Stöd vid dyslexi och dyskalkyli</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Lättlästa Google Fonts: Lexend, Atkinson Hyperlegible, Comic Neue & Noto Sans Arabic -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Comic+Neue:wght@400;700&family=Lexend:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet" />
+
+  <!-- PDF.js för lokal textextraktion i webbläsaren (inga filer skickas till server) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+  <style>
+    /* Grundvariabler och färgteman för tillgänglighet & lugn läsmiljö */
+    :root {
+      --bg-page: #faf8f5;
+      --bg-card: #ffffff;
+      --bg-subtle: #f1ede6;
+      --text-main: #1e293b;
+      --text-muted: #475569;
+      --accent: #1d4ed8;
+      --accent-soft: #dbeafe;
+      --border-color: #cbd5e1;
+      --highlight-word: #fde047;
+      --highlight-word-text: #0f172a;
+      --highlight-para: #eff6ff;
+      --reader-font: 'Lexend', 'Noto Sans Arabic', system-ui, -apple-system, sans-serif;
+      --reader-size: 20px;
+      --reader-line: 1.75;
+      --reader-spacing: 0.02em;
+    }
+
+    /* Färgteman som eleven kan växla mellan */
+    body.theme-cream {
+      --bg-page: #faf8f5;
+      --bg-card: #ffffff;
+      --bg-subtle: #f2eee7;
+      --text-main: #1e293b;
+      --text-muted: #475569;
+      --accent: #1e40af;
+      --accent-soft: #dbeafe;
+      --border-color: #d6cfc2;
+      --highlight-word: #fde047;
+      --highlight-word-text: #0f172a;
+      --highlight-para: #f0f7ff;
+    }
+
+    body.theme-yellow {
+      --bg-page: #fefce8;
+      --bg-card: #fef9c3;
+      --bg-subtle: #fef08a;
+      --text-main: #1c1917;
+      --text-muted: #44403c;
+      --accent: #1d4ed8;
+      --accent-soft: #dbeafe;
+      --border-color: #eab308;
+      --highlight-word: #93c5fd;
+      --highlight-word-text: #0f172a;
+      --highlight-para: #fef3c7;
+    }
+
+    body.theme-blue {
+      --bg-page: #eff6ff;
+      --bg-card: #ffffff;
+      --bg-subtle: #dbeafe;
+      --text-main: #0f172a;
+      --text-muted: #334155;
+      --accent: #1e3a8a;
+      --accent-soft: #bfdbfe;
+      --border-color: #93c5fd;
+      --highlight-word: #fde047;
+      --highlight-word-text: #0f172a;
+      --highlight-para: #e0f2fe;
+    }
+
+    body.theme-contrast {
+      --bg-page: #ffffff;
+      --bg-card: #ffffff;
+      --bg-subtle: #f1f5f9;
+      --text-main: #000000;
+      --text-muted: #1e293b;
+      --accent: #0000ee;
+      --accent-soft: #e2e8f0;
+      --border-color: #000000;
+      --highlight-word: #ffff00;
+      --highlight-word-text: #000000;
+      --highlight-para: #f8fafc;
+    }
+
+    body.theme-dark {
+      --bg-page: #111827;
+      --bg-card: #1f2937;
+      --bg-subtle: #374151;
+      --text-main: #fef9c3;
+      --text-muted: #d1d5db;
+      --accent: #60a5fa;
+      --accent-soft: #1e3a8a;
+      --border-color: #4b5563;
+      --highlight-word: #facc15;
+      --highlight-word-text: #111827;
+      --highlight-para: #263142;
+    }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      font-family: 'Lexend', 'Noto Sans Arabic', system-ui, -apple-system, sans-serif;
+      transition: background-color 0.25s ease, color 0.25s ease;
+    }
+
+    .card-surface {
+      background-color: var(--bg-card);
+      border: 1.5px solid var(--border-color);
+      color: var(--text-main);
+    }
+
+    .subtle-surface {
+      background-color: var(--bg-subtle);
+      color: var(--text-main);
+    }
+
+    /* Läsyta som styrs direkt av elevens dyslexi-inställningar */
+    #readerDisplay {
+      font-family: var(--reader-font);
+      font-size: var(--reader-size);
+      line-height: var(--reader-line);
+      letter-spacing: var(--reader-spacing);
+      word-spacing: calc(var(--reader-spacing) * 2.5);
+    }
+
+    .reader-paragraph {
+      padding: 0.85rem 1rem;
+      margin-bottom: 0.85rem;
+      border-radius: 0.85rem;
+      border: 2px solid transparent;
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+      cursor: pointer;
+    }
+
+    .reader-paragraph:hover {
+      border-color: var(--border-color);
+    }
+
+    .reader-paragraph.active-paragraph {
+      background-color: var(--highlight-para);
+      border-color: var(--accent);
+    }
+
+    .reader-word {
+      display: inline-block;
+      padding: 0.05em 0.14em;
+      border-radius: 0.35em;
+      cursor: pointer;
+      transition: background-color 0.12s ease, transform 0.1s ease;
+    }
+
+    .reader-word:hover {
+      background-color: var(--accent-soft);
+      text-decoration: underline;
+    }
+
+    .reader-word.speaking-word {
+      background-color: var(--highlight-word) !important;
+      color: var(--highlight-word-text) !important;
+      font-weight: 700;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      transform: scale(1.04);
+    }
+
+    /* Läslinjal (Reading Ruler) som hjälper eleven hålla raden */
+    #readingRulerOverlay {
+      position: fixed;
+      left: 0;
+      right: 0;
+      height: 54px;
+      pointer-events: none;
+      z-index: 45;
+      border-top: 3px solid var(--accent);
+      border-bottom: 3px solid var(--accent);
+      background: rgba(253, 224, 71, 0.16);
+      box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.28);
+      transition: top 0.05s linear;
+    }
+
+    /* Tydliga fokusramar för tangentbordsnavigering */
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    /* Större reglage för enkel användning på surfplatta & dator */
+    input[type="range"] {
+      height: 10px;
+      border-radius: 999px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    /* RTL-justeringar när Arabiska väljs */
+    [dir="rtl"] .ltr-math {
+      direction: ltr;
+      unicode-bidi: isolate;
+    }
+  </style>
+</head>
+<body class="theme-cream min-h-screen flex flex-col">
+
+  <!-- Läslinjal (visas när eleven slår på läslinjalen) -->
+  <div id="readingRulerOverlay" class="hidden" aria-hidden="true" style="top: 320px;"></div>
+
+  <!-- Meddelanderuta (ersätter alert/confirm helt) -->
+  <div id="toastBanner" role="status" aria-live="polite" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 hidden max-w-lg w-[92%] px-5 py-3.5 rounded-2xl shadow-xl bg-slate-900 text-white text-sm sm:text-base font-medium flex items-center justify-between gap-3">
+    <span id="toastMessage"></span>
+    <button type="button" onclick="hideToast()" class="px-2.5 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs font-bold">OK</button>
+  </div>
+
+  <!-- TOPP-HEADER MED INTEGRITETSBADGE & SPRÅKVÄLJARE -->
+  <header class="card-surface border-b shadow-sm sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-4 py-3 sm:py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <!-- Logotyp & Titel -->
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-2xl bg-blue-700 text-white flex items-center justify-center shadow-sm shrink-0" aria-hidden="true">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-lg sm:text-xl font-bold tracking-tight" data-i18n="appTitle">Läs & Räkna Lugnt</h1>
+          <p class="text-xs sm:text-sm opacity-80" data-i18n="appSubtitle">Stödverktyg i webbläsaren vid dyslexi och dyskalkyli</p>
+        </div>
+      </div>
+
+      <!-- Höger sida: Integritetsbricka + Språkmeny -->
+      <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-900 border border-emerald-300 text-xs font-medium">
+          <svg class="w-4 h-4 text-emerald-700 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+          <span data-i18n="privacyBadge">100 % privat – inget sparas eller skickas</span>
+        </div>
+
+        <label for="uiLanguageSelect" class="sr-only" data-i18n="uiLangLabel">Välj språk för sidan</label>
+        <select id="uiLanguageSelect" onchange="changeUILanguage(this.value)" class="px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm font-semibold min-h-[42px] cursor-pointer">
+          <option value="sv">🇸🇪 Svenska</option>
+          <option value="en">🇬🇧 English</option>
+          <option value="ar">🇸🇦 العربية (Arabic)</option>
+          <option value="bs">🇧🇦 Bosanski</option>
+          <option value="so">🇸🇴 Soomaali</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <!-- HUVUDINNEHÅLL -->
+  <main class="max-w-6xl w-full mx-auto px-4 py-5 flex-1 space-y-5">
+
+    <!-- 3-STEGS SNABBGUIDE (Kan döljas/visas) -->
+    <section class="card-surface rounded-2xl p-4 sm:p-5 shadow-sm" aria-label="Snabbguide">
+      <div class="flex items-center justify-between gap-2 mb-3">
+        <h2 class="text-sm sm:text-base font-bold flex items-center gap-2">
+          <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-800 text-xs font-bold">?</span>
+          <span data-i18n="guideTitle">Så här kommer du igång i 3 enkla steg:</span>
+        </h2>
+        <button type="button" onclick="toggleQuickGuide()" id="toggleGuideBtn" class="text-xs font-semibold underline opacity-80 hover:opacity-100 px-2 py-1" data-i18n="hideGuide">Dölj guide</button>
+      </div>
+      <div id="quickGuideSteps" class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+        <div class="subtle-surface rounded-xl p-3.5 flex items-start gap-3">
+          <span class="w-7 h-7 rounded-full bg-blue-700 text-white font-bold flex items-center justify-center shrink-0">1</span>
+          <div>
+            <p class="font-bold" data-i18n="step1Title">Lägg in din text</p>
+            <p class="text-xs sm:text-sm opacity-85 mt-0.5" data-i18n="step1Desc">Klistra in text i rutan eller välj en PDF från din dator/surfplatta.</p>
+          </div>
+        </div>
+        <div class="subtle-surface rounded-xl p-3.5 flex items-start gap-3">
+          <span class="w-7 h-7 rounded-full bg-blue-700 text-white font-bold flex items-center justify-center shrink-0">2</span>
+          <div>
+            <p class="font-bold" data-i18n="step2Title">Anpassa så det blir lätt att se</p>
+            <p class="text-xs sm:text-sm opacity-85 mt-0.5" data-i18n="step2Desc">Ändra textstorlek, bakgrundsfärg, typsnitt eller slå på läslinjalen.</p>
+          </div>
+        </div>
+        <div class="subtle-surface rounded-xl p-3.5 flex items-start gap-3">
+          <span class="w-7 h-7 rounded-full bg-blue-700 text-white font-bold flex items-center justify-center shrink-0">3</span>
+          <div>
+            <p class="font-bold" data-i18n="step3Title">Lyssna, förstå eller räkna</p>
+            <p class="text-xs sm:text-sm opacity-85 mt-0.5" data-i18n="step3Desc">Tryck på Läs upp, klicka på svåra ord eller öppna Räknehjälpen.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HUVUDNAVIGERING (3 TYDLIGA FLIKAR) -->
+    <nav class="grid grid-cols-1 sm:grid-cols-3 gap-2.5" role="tablist" aria-label="Huvudverktyg">
+      <button type="button" role="tab" id="tabBtn-reading" aria-selected="true" onclick="switchMainTab('reading')"
+        class="tab-btn min-h-[54px] px-4 py-3 rounded-2xl font-bold text-base flex items-center justify-center gap-2.5 shadow-sm transition bg-blue-700 text-white border-2 border-blue-700">
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+        </svg>
+        <span data-i18n="tabReading">1. Lässtöd & Dyslexi</span>
+      </button>
+
+      <button type="button" role="tab" id="tabBtn-math" aria-selected="false" onclick="switchMainTab('math')"
+        class="tab-btn min-h-[54px] px-4 py-3 rounded-2xl font-bold text-base flex items-center justify-center gap-2.5 shadow-sm transition card-surface hover:border-blue-600">
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+        </svg>
+        <span data-i18n="tabMath">2. Räknehjälp & Dyskalkyli</span>
+      </button>
+
+      <button type="button" role="tab" id="tabBtn-language" aria-selected="false" onclick="switchMainTab('language')"
+        class="tab-btn min-h-[54px] px-4 py-3 rounded-2xl font-bold text-base flex items-center justify-center gap-2.5 shadow-sm transition card-surface hover:border-blue-600">
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+        </svg>
+        <span data-i18n="tabLanguage">3. Språk & Förenkla text</span>
+      </button>
+    </nav>
+
+    <!-- ===================================================================== -->
+    <!-- FLIK 1: LÄSSTÖD & DYSLEXIVERKTYG                                     -->
+    <!-- ===================================================================== -->
+    <section id="panel-reading" role="tabpanel" class="space-y-5">
+
+      <!-- RAD 1: INMATNING (KLISTRA IN TEXT ELLER VÄLJ LOKAL PDF) -->
+      <div class="card-surface rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap gap-2">
+            <button type="button" id="sourceBtn-paste" onclick="switchInputSource('paste')"
+              class="min-h-[44px] px-4 py-2 rounded-xl font-bold text-sm bg-blue-700 text-white shadow-sm">
+              ✏️ <span data-i18n="btnPasteMode">Klistra in eller skriv text</span>
+            </button>
+            <button type="button" id="sourceBtn-pdf" onclick="switchInputSource('pdf')"
+              class="min-h-[44px] px-4 py-2 rounded-xl font-bold text-sm subtle-surface border border-slate-300 hover:border-blue-600">
+              📄 <span data-i18n="btnPdfMode">Välj PDF-fil från enheten</span>
+            </button>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <button type="button" onclick="loadSampleText()" class="min-h-[42px] px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-amber-100 text-amber-950 border border-amber-300 hover:bg-amber-200">
+              ✨ <span data-i18n="btnLoadSample">Ladda exempeltext</span>
+            </button>
+            <button type="button" onclick="clearReaderText()" class="min-h-[42px] px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold subtle-surface border border-slate-300 hover:bg-red-50 hover:text-red-800">
+              🗑️ <span data-i18n="btnClear">Rensa</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Inmatningsläge A: Textruta -->
+        <div id="inputArea-paste" class="space-y-2">
+          <label for="rawTextInput" class="block text-sm font-semibold" data-i18n="pasteLabel">
+            Klistra in eller skriv din text här nedan. Texten visas sedan i det anpassade läsfönstret längre ner.
+          </label>
+          <textarea id="rawTextInput" rows="4" oninput="syncTextToReader()"
+            class="w-full rounded-xl border-2 border-slate-300 p-3.5 text-base bg-white text-slate-900 focus:border-blue-600"
+            data-i18n-placeholder="pastePlaceholder"
+            placeholder="Klistra in en skoltext, uppgift eller artikel här..."></textarea>
+        </div>
+
+        <!-- Inmatningsläge B: Lokal PDF-uppladdning -->
+        <div id="inputArea-pdf" class="hidden space-y-3">
+          <div class="rounded-2xl border-2 border-dashed border-blue-400 p-5 text-center subtle-surface space-y-3">
+            <p class="font-bold text-base" data-i18n="pdfDropTitle">Välj en PDF-fil från din dator, mobil eller surfplatta</p>
+            <p class="text-xs sm:text-sm opacity-85 max-w-xl mx-auto" data-i18n="pdfPrivacyNote">
+              Filen läses helt lokalt i din egen webbläsare. Den laddas aldrig upp till någon server.
+            </p>
+            <div>
+              <label for="pdfFileInput" class="inline-flex items-center justify-center min-h-[48px] px-6 py-3 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-sm sm:text-base cursor-pointer shadow-sm">
+                📂 <span class="ms-2" data-i18n="pdfChooseBtn">Bläddra efter PDF-fil...</span>
+              </label>
+              <input type="file" id="pdfFileInput" accept="application/pdf,.pdf" onchange="handlePdfUpload(event)" class="hidden" />
+            </div>
+            <p id="pdfFileNameDisplay" class="text-xs font-semibold text-blue-800"></p>
+          </div>
+
+          <!-- Laddningsindikator för PDF -->
+          <div id="pdfLoadingBox" class="hidden p-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-950 flex items-center gap-3">
+            <div class="w-5 h-5 border-2 border-blue-700 border-t-transparent rounded-full animate-spin shrink-0"></div>
+            <span id="pdfLoadingText" class="text-sm font-semibold">Läser sidor i PDF-filen lokalt...</span>
+          </div>
+
+          <!-- Varning vid skannad bild-PDF (0 tecken) -->
+          <div id="pdfScannedWarning" class="hidden p-4 rounded-2xl bg-amber-50 border-2 border-amber-400 text-amber-950 space-y-2.5">
+            <h3 class="font-bold text-base flex items-center gap-2">
+              ⚠️ <span data-i18n="pdfScanTitle">Den här PDF-filen verkar bestå av inskannade bilder</span>
+            </h3>
+            <p class="text-sm leading-relaxed" data-i18n="pdfScanDesc">
+              Webbläsaren hittade ingen markerbar text i PDF-filen. Det händer när ett papper har skannats som en bild utan texttolkning (OCR).
+            </p>
+            <div class="text-sm space-y-1 bg-white/80 p-3 rounded-xl border border-amber-200">
+              <p class="font-bold" data-i18n="pdfScanOptionsTitle">Så här kan du göra istället:</p>
+              <ul class="list-disc list-inside space-y-1">
+                <li data-i18n="pdfScanOpt1">Öppna PDF-filen i ett program med OCR (textigenkänning) och kopiera texten.</li>
+                <li data-i18n="pdfScanOpt2">Klistra sedan in texten i rutan "Klistra in eller skriv text" här bredvid.</li>
+              </ul>
+            </div>
+            <button type="button" onclick="switchInputSource('paste')" class="min-h-[44px] px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm">
+              ✏️ <span data-i18n="pdfScanFallbackBtn">Gå till textrutan för att klistra in</span>
+            </button>
+          </div>
+
+          <!-- Ärlig info om PDF-funktionens gränser -->
+          <p class="text-xs opacity-75" data-i18n="pdfBrowserLimitation">
+            ℹ️ Info: PDF-läsaren fungerar bäst med vanliga digitala PDF-dokument med textlager. Mycket stora filer eller bildbaserade PDF:er utan OCR kräver externt OCR-verktyg.
+          </p>
+        </div>
+      </div>
+
+      <!-- RAD 2: LÄS- OCH LYSSNINGSPANEL (TALSYNTES) -->
+      <div class="card-surface rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h2 class="text-base sm:text-lg font-bold flex items-center gap-2">
+            🔊 <span data-i18n="ttsTitle">Lyssna på texten</span>
+          </h2>
+          <span id="ttsStatusBadge" class="px-3 py-1 rounded-full text-xs font-bold subtle-surface" data-i18n="ttsReady">Redo att läsa</span>
+        </div>
+
+        <!-- Huvudknappar för uppläsning -->
+        <div class="flex flex-wrap gap-2.5">
+          <button type="button" id="btnSpeakAll" onclick="startSpeech('all')"
+            class="min-h-[48px] px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm sm:text-base flex items-center gap-2 shadow-sm disabled:opacity-40">
+            ▶️ <span data-i18n="btnReadAll">Läs upp hela</span>
+          </button>
+
+          <button type="button" id="btnSpeakSelected" onclick="startSpeech('selected')"
+            class="min-h-[48px] px-4 py-2.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-sm sm:text-base flex items-center gap-2 shadow-sm disabled:opacity-40">
+            🎯 <span data-i18n="btnReadSelected">Läs markerat stycke</span>
+          </button>
+
+          <button type="button" id="btnPauseSpeech" onclick="pauseSpeech()" disabled
+            class="min-h-[48px] px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-sm sm:text-base flex items-center gap-2 shadow-sm disabled:opacity-40">
+            ⏸️ <span data-i18n="btnPause">Pausa</span>
+          </button>
+
+          <button type="button" id="btnResumeSpeech" onclick="resumeSpeech()" disabled
+            class="min-h-[48px] px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm sm:text-base flex items-center gap-2 shadow-sm disabled:opacity-40">
+            ⏯️ <span data-i18n="btnResume">Fortsätt</span>
+          </button>
+
+          <button type="button" id="btnStopSpeech" onclick="stopSpeech()" disabled
+            class="min-h-[48px] px-4 py-2.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-bold text-sm sm:text-base flex items-center gap-2 shadow-sm disabled:opacity-40">
+            ⏹️ <span data-i18n="btnStop">Stoppa</span>
+          </button>
+        </div>
+
+        <!-- Röstval och Hastighetsreglage -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-200/70">
+          <!-- Röstväljare -->
+          <div class="space-y-1.5">
+            <label for="voiceSelect" class="block text-xs sm:text-sm font-bold" data-i18n="voiceLabel">
+              Välj röst och uppläsningsspråk:
+            </label>
+            <select id="voiceSelect" onchange="handleVoiceChange()" class="w-full min-h-[44px] px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm font-medium">
+              <option value="">Laddar webbläsarens röster...</option>
+            </select>
+            <p id="voiceAvailabilityNotice" class="text-xs opacity-80"></p>
+          </div>
+
+          <!-- Hastighetsreglage -->
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between">
+              <label for="speechRateRange" class="text-xs sm:text-sm font-bold" data-i18n="rateLabel">Uppläsningshastighet:</label>
+              <span id="speechRateValue" class="px-2.5 py-0.5 rounded-lg bg-blue-100 text-blue-900 text-xs font-bold">0.9x (Lugn)</span>
+            </div>
+            <input type="range" id="speechRateRange" min="0.5" max="1.8" step="0.1" value="0.9" oninput="updateSpeechRateLabel(this.value)" class="w-full" />
+            <div class="flex justify-between text-[11px] opacity-75">
+              <span data-i18n="rateSlow">0.5x Långsam</span>
+              <span data-i18n="rateNormal">1.0x Normal</span>
+              <span data-i18n="rateFast">1.8x Snabb</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RAD 3: DYSLEXIANPASSNINGAR + INTERAKTIV LÄSVY -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+
+        <!-- Vänster/Topp: Dyslexi-inställningar (4 kolumner på stor skärm) -->
+        <aside class="lg:col-span-4 card-surface rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
+          <h2 class="text-base font-bold flex items-center gap-2">
+            👁️ <span data-i18n="dyslexiaSettingsTitle">Anpassa text & läsmiljö</span>
+          </h2>
+
+          <!-- Textstorlek -->
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs sm:text-sm font-semibold">
+              <label for="fontSizeSlider" data-i18n="fontSizeLabel">Textstorlek</label>
+              <span id="fontSizeVal" class="font-bold">20 px</span>
+            </div>
+            <input type="range" id="fontSizeSlider" min="16" max="34" step="1" value="20" oninput="updateDyslexiaStyle()" class="w-full" />
+          </div>
+
+          <!-- Radavstånd -->
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs sm:text-sm font-semibold">
+              <label for="lineHeightSlider" data-i18n="lineHeightLabel">Radavstånd</label>
+              <span id="lineHeightVal" class="font-bold">1.75</span>
+            </div>
+            <input type="range" id="lineHeightSlider" min="1.4" max="2.6" step="0.1" value="1.75" oninput="updateDyslexiaStyle()" class="w-full" />
+          </div>
+
+          <!-- Bokstavsavstånd -->
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs sm:text-sm font-semibold">
+              <label for="letterSpacingSlider" data-i18n="letterSpacingLabel">Bokstavsavstånd</label>
+              <span id="letterSpacingVal" class="font-bold">0.02 em</span>
+            </div>
+            <input type="range" id="letterSpacingSlider" min="0" max="0.18" step="0.02" value="0.02" oninput="updateDyslexiaStyle()" class="w-full" />
+          </div>
+
+          <!-- Typsnitt -->
+          <div class="space-y-1.5">
+            <label for="fontFamilySelect" class="block text-xs sm:text-sm font-semibold" data-i18n="fontFamilyLabel">Typsnitt (Lättlästa)</label>
+            <select id="fontFamilySelect" onchange="updateDyslexiaStyle()" class="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm">
+              <option value="'Lexend', 'Noto Sans Arabic', sans-serif">Lexend (Utvecklat för läsflyt)</option>
+              <option value="'Atkinson Hyperlegible', 'Noto Sans Arabic', sans-serif">Atkinson Hyperlegible (Tydliga tecken)</option>
+              <option value="'Comic Neue', 'Noto Sans Arabic', cursive">Comic Neue (Mjuka, rundade former)</option>
+              <option value="Verdana, Geneva, sans-serif">Verdana (Breda bokstäver)</option>
+              <option value="Georgia, serif">Georgia (Klassisk serif)</option>
+            </select>
+          </div>
+
+          <!-- Bakgrund & Kontrast -->
+          <div class="space-y-1.5">
+            <span class="block text-xs sm:text-sm font-semibold" data-i18n="themeLabel">Bakgrund & Kontrast</span>
+            <div class="grid grid-cols-5 gap-1.5">
+              <button type="button" onclick="setColorTheme('cream')" title="Mjuk Kräm" class="h-10 rounded-xl border-2 border-slate-400 bg-[#faf8f5] text-[#1e293b] font-bold text-xs">Aa</button>
+              <button type="button" onclick="setColorTheme('yellow')" title="Pastellgul" class="h-10 rounded-xl border-2 border-amber-400 bg-[#fefce8] text-[#1c1917] font-bold text-xs">Aa</button>
+              <button type="button" onclick="setColorTheme('blue')" title="Ljusblå" class="h-10 rounded-xl border-2 border-blue-400 bg-[#eff6ff] text-[#0f172a] font-bold text-xs">Aa</button>
+              <button type="button" onclick="setColorTheme('contrast')" title="Högkontrast" class="h-10 rounded-xl border-2 border-black bg-white text-black font-bold text-xs">Aa</button>
+              <button type="button" onclick="setColorTheme('dark')" title="Mörkt läge" class="h-10 rounded-xl border-2 border-slate-600 bg-[#111827] text-[#fef9c3] font-bold text-xs">Aa</button>
+            </div>
+          </div>
+
+          <!-- Läslinjal & Korta stycken -->
+          <div class="space-y-2.5 pt-2 border-t border-slate-200/70">
+            <label class="flex items-center justify-between gap-3 cursor-pointer p-2.5 rounded-xl subtle-surface">
+              <span class="text-xs sm:text-sm font-bold" data-i18n="rulerToggleLabel">📏 Läslinjal (följer markören)</span>
+              <input type="checkbox" id="rulerToggle" onchange="toggleReadingRuler(this.checked)" class="w-5 h-5 accent-blue-700" />
+            </label>
+
+            <label class="flex items-center justify-between gap-3 cursor-pointer p-2.5 rounded-xl subtle-surface">
+              <span class="text-xs sm:text-sm font-bold" data-i18n="shortChunksLabel">✂️ Dela upp i korta stycken</span>
+              <input type="checkbox" id="shortChunksToggle" checked onchange="syncTextToReader()" class="w-5 h-5 accent-blue-700" />
+            </label>
+          </div>
+        </aside>
+
+        <!-- Höger: Interaktiv Läsvy + Ordförklaring (8 kolumner på stor skärm) -->
+        <div class="lg:col-span-8 space-y-4">
+
+          <!-- Ordförklaringsruta (visas när eleven klickar på ett ord) -->
+          <div id="wordExplanationCard" class="hidden card-surface rounded-2xl p-4 border-2 border-blue-600 shadow-sm space-y-2">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <span class="text-xs font-bold uppercase tracking-wider text-blue-700" data-i18n="wordHelperTag">Ordhjälp & Stavelser</span>
+                <h3 id="explainedWordTitle" class="text-xl font-bold mt-0.5"></h3>
+              </div>
+              <div class="flex items-center gap-2">
+                <button type="button" onclick="speakSingleWord()" class="min-h-[38px] px-3 py-1.5 rounded-xl bg-blue-100 text-blue-900 font-bold text-xs hover:bg-blue-200">
+                  🔊 <span data-i18n="listenWordBtn">Lyssna på ordet</span>
+                </button>
+                <button type="button" onclick="copyExplainedWord()" class="min-h-[38px] px-3 py-1.5 rounded-xl subtle-surface font-bold text-xs hover:opacity-80">
+                  📋 <span data-i18n="copyWordBtn">Kopiera</span>
+                </button>
+                <button type="button" onclick="closeWordCard()" aria-label="Stäng" class="min-h-[38px] px-2.5 py-1.5 rounded-xl subtle-surface font-bold text-xs">✕</button>
+              </div>
+            </div>
+            <p id="explainedWordSyllables" class="text-sm font-semibold text-emerald-800 bg-emerald-50 inline-block px-3 py-1 rounded-lg border border-emerald-200"></p>
+            <p id="explainedWordMeaning" class="text-sm sm:text-base leading-relaxed"></p>
+          </div>
+
+          <!-- Själva läsfönstret -->
+          <div class="card-surface rounded-2xl p-4 sm:p-6 shadow-sm space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/70 pb-3">
+              <h2 class="text-base font-bold" data-i18n="readerWindowTitle">Läsfönster</h2>
+              <span class="text-xs opacity-80" data-i18n="readerWindowHint">
+                💡 Klicka på ett stycke för att markera det, eller klicka på ett ord för förklaring.
+              </span>
+            </div>
+
+            <div id="readerDisplay" class="min-h-[240px] rounded-xl" aria-live="off">
+              <!-- Rendreras dynamiskt med stycken och klickbara ord -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- FLIK 2: RÄKNEHJÄLP & DYSKALKYLI-VERKTYG                               -->
+    <!-- ===================================================================== -->
+    <section id="panel-math" role="tabpanel" class="hidden space-y-5">
+
+      <!-- Undermeny för Dyskalkyli-verktygen -->
+      <div class="card-surface rounded-2xl p-3 shadow-sm flex flex-wrap gap-2">
+        <button type="button" onclick="switchMathTool('calc')" id="mathSubBtn-calc"
+          class="math-sub-btn min-h-[44px] px-4 py-2 rounded-xl font-bold text-sm bg-blue-700 text-white">
+          🧮 <span data-i18n="mathToolCalc">Steg-för-steg Miniräknare</span>
+        </button>
+        <button type="button" onclick="switchMathTool('numberline')" id="mathSubBtn-numberline"
+          class="math-sub-btn min-h-[44px] px-4 py-2 rounded-xl font-bold text-sm subtle-surface hover:border-blue-600">
+          📏 <span data-i18n="mathToolLine">Interaktiv Tallinje</span>
+        </button>
+        <button type="button" onclick="switchMathTool('fractions')" id="mathSubBtn-fractions"
+          class="math-sub-btn min-h-[44px] px-4 py-2 rounded-xl font-bold text-sm subtle-surface hover:border-blue-600">
+          🥧 <span data-i18n="mathToolFrac">Bråk, Procent & Decimal</span>
+        </button>
+        <button type="button" onclick="switchMathTool('units')" id="mathSubBtn-units"
+          class="math-sub-btn min-h-[44px] px-4 py-2 rounded-xl font-bold text-sm subtle-surface hover:border-blue-600">
+          ⚖️ <span data-i18n="mathToolUnits">Enhetsomvandlare</span>
+        </button>
+        <button type="button" onclick="switchMathTool('examples')" id="mathSubBtn-examples"
+          class="math-sub-btn min-h-[44px] px-4 py-2 rounded-xl font-bold text-sm subtle-surface hover:border-blue-600">
+          🪜 <span data-i18n="mathToolExamples">Lösta exempel steg för steg</span>
+        </button>
+      </div>
+
+      <!-- 2.1 STEG-FÖR-STEG MINIRÄKNARE -->
+      <div id="mathTool-calc" class="card-surface rounded-2xl p-4 sm:p-6 shadow-sm">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <!-- Miniräknarknappar -->
+          <div class="lg:col-span-5 space-y-3">
+            <h2 class="text-lg font-bold" data-i18n="calcHeading">Tydlig miniräknare</h2>
+            <div class="p-4 rounded-2xl bg-slate-900 text-white text-right ltr-math space-y-1">
+              <div id="calcExpressionDisplay" class="text-sm text-slate-300 min-h-[20px]">0</div>
+              <div id="calcMainDisplay" class="text-3xl font-bold tracking-wider overflow-x-auto">0</div>
+            </div>
+
+            <div class="grid grid-cols-4 gap-2 ltr-math">
+              <button type="button" onclick="calcClear()" class="col-span-2 min-h-[52px] rounded-xl bg-rose-100 text-rose-900 font-bold text-lg hover:bg-rose-200">C (Rensa)</button>
+              <button type="button" onclick="calcBackspace()" class="min-h-[52px] rounded-xl bg-amber-100 text-amber-900 font-bold text-lg hover:bg-amber-200">⌫</button>
+              <button type="button" onclick="calcOperator('/')" class="min-h-[52px] rounded-xl bg-blue-100 text-blue-900 font-bold text-xl hover:bg-blue-200">÷</button>
+
+              <button type="button" onclick="calcDigit('7')" class="min-h-[52px] rounded-xl subtle-surface font-bold text-xl hover:opacity-80">7</button>
+              <button type="button" onclick="calcDigit('8')" class="min-h-[52px] rounded-xl subtle-surface font-bold text-xl hover:opacity-80">8</button>
+              <button type="button" onclick="calcDigit('9')" class="min-h-[52px] rounded-xl subtle-surface font-bold text-xl hover:opacity-80">9</button>
+              <button type="button" onclick="calcOperator('*')" class="min-h-[52px] rounded-xl bg-blue-100 text-blue-900 font-bold text-xl hover:bg-blue-200">×</button>
+
+              <button type="button" onclick="calcDigit('4')" class="min-h-[52px] rounded-xl subtle-surface font-bold text-xl hover:opacity-80">4</button>
+              <button type="button" onclick="calcDigit('5')" class="min-h-[52px] rounded-xl subtle-surface font-bold text-xl hover:opacity-80">5</button>
+              <button type="button" onclick="calcDigit('6')" class="min-h-[52px] rounded-xl subtle-surface font-bold text-xl hover:opacity-80">6</button>
+              <button type="button" onclick="calcOperator('-')" class="min-h-[52px] rounded-xl bg-blue-100 text-blue-900 font-bold text-xl hover:bg-blue-200">−</button>
+
+              <button type="button" onclick="calcDigit('1')" class="min-h-[52px] rounded-xl subtle-surface font-bold text-xl hover:opacity-80">1</button>
+              <button type="button" onclick="calcDigit('2')" class="min-h-[52px] rounded-xl subtle-surface font-bold text-xl hover:opacity-80">2</button>
+              <button type="button" onclick="calcDigit('3')" class="min-h-[52px] rounded-xl subtle-surface font-bold text-xl hover:opacity-80">3</button>
+              <button type="button" onclick="calcOperator('+')" class="min-h-[52px] rounded-xl bg-blue-100 text-blue-900 font-bold text-xl hover:bg-blue-200">+</button>
+
+              <button type="button" onclick="calcDigit('0')" class="col-span-2 min-h-[52px] rounded-xl subtle-surface font-bold text-xl hover:opacity-80">0</button>
+              <button type="button" onclick="calcDigit('.')" class="min-h-[52px] rounded-xl subtle-surface font-bold text-xl hover:opacity-80">,</button>
+              <button type="button" onclick="calcEquals()" class="min-h-[52px] rounded-xl bg-emerald-700 text-white font-bold text-2xl hover:bg-emerald-800">=</button>
+            </div>
+          </div>
+
+          <!-- Pedagogisk steg-för-steg-förklaring -->
+          <div class="lg:col-span-7 subtle-surface rounded-2xl p-5 space-y-3">
+            <h3 class="text-base sm:text-lg font-bold flex items-center gap-2">
+              💡 <span data-i18n="calcStepsTitle">Så här tänker vi steg för steg:</span>
+            </h3>
+            <div id="calcStepExplanation" class="space-y-2.5 text-sm sm:text-base leading-relaxed">
+              <p class="opacity-85" data-i18n="calcStepsEmpty">
+                Slå in ett tal, välj ett räknesätt (+, −, ×, ÷), slå in nästa tal och tryck på <strong>=</strong> så visas uträkningen steg för steg här.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2.2 INTERAKTIV TALLINJE -->
+      <div id="mathTool-numberline" class="hidden card-surface rounded-2xl p-4 sm:p-6 shadow-sm space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-bold" data-i18n="nlHeading">Interaktiv Tallinje – Se hur talen hoppar</h2>
+            <p class="text-sm opacity-85" data-i18n="nlSub">Välj ett starttal och ett hopp framåt (+) eller bakåt (−).</p>
+          </div>
+          <div>
+            <label for="nlRangeSelect" class="text-xs font-bold block mb-1" data-i18n="nlRangeLabel">Skala på tallinjen:</label>
+            <select id="nlRangeSelect" onchange="drawNumberLine()" class="min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm font-semibold">
+              <option value="0,20,1">0 till 20 (steg om 1)</option>
+              <option value="-10,10,1">−10 till 10 (negativa tal)</option>
+              <option value="0,100,10">0 till 100 (tiotal)</option>
+              <option value="0,2,0.2">0 till 2 (decimaltal)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Kontroller för hopp -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 subtle-surface p-4 rounded-2xl">
+          <div>
+            <label for="nlStartInput" class="block text-xs font-bold mb-1" data-i18n="nlStartLabel">Starta på talet:</label>
+            <input type="number" id="nlStartInput" value="6" step="any" oninput="drawNumberLine()" class="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold" />
+          </div>
+          <div>
+            <label for="nlJumpInput" class="block text-xs font-bold mb-1" data-i18n="nlJumpLabel">Hoppa (+ framåt / − bakåt):</label>
+            <input type="number" id="nlJumpInput" value="5" step="any" oninput="drawNumberLine()" class="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold" />
+          </div>
+          <div class="flex items-end">
+            <button type="button" onclick="drawNumberLine()" class="w-full min-h-[44px] px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-sm">
+              🦘 <span data-i18n="nlShowJumpBtn">Visa hoppet</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- SVG Tallinje -->
+        <div class="overflow-x-auto pb-2 ltr-math">
+          <svg id="numberLineSvg" viewBox="0 0 800 180" class="w-full min-w-[540px] h-auto rounded-xl border border-slate-200 bg-white"></svg>
+        </div>
+
+        <div id="nlExplanationBox" class="p-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-950 font-medium text-sm sm:text-base"></div>
+      </div>
+
+      <!-- 2.3 VISUELL BRÅK-, PROCENT- & DECIMALUTFORSKARE -->
+      <div id="mathTool-fractions" class="hidden card-surface rounded-2xl p-4 sm:p-6 shadow-sm space-y-5">
+        <div>
+          <h2 class="text-lg font-bold" data-i18n="fracHeading">Bråk, Procent och Decimaltal hänger ihop</h2>
+          <p class="text-sm opacity-85" data-i18n="fracSub">Ändra täljaren (hur många delar vi tar) och nämnaren (hur många lika stora delar det finns totalt).</p>
+        </div>
+
+        <!-- Snabbval av vanliga bråk -->
+        <div class="flex flex-wrap gap-2">
+          <span class="text-xs font-bold self-center me-1" data-i18n="fracPresets">Snabbval:</span>
+          <button type="button" onclick="setFraction(1,2)" class="px-3 py-1.5 rounded-xl subtle-surface font-bold text-sm hover:border-blue-600 border">1/2 (Hälften)</button>
+          <button type="button" onclick="setFraction(1,4)" class="px-3 py-1.5 rounded-xl subtle-surface font-bold text-sm hover:border-blue-600 border">1/4 (En fjärdedel)</button>
+          <button type="button" onclick="setFraction(3,4)" class="px-3 py-1.5 rounded-xl subtle-surface font-bold text-sm hover:border-blue-600 border">3/4 (Tre fjärdedelar)</button>
+          <button type="button" onclick="setFraction(1,5)" class="px-3 py-1.5 rounded-xl subtle-surface font-bold text-sm hover:border-blue-600 border">1/5 (En femtedel)</button>
+          <button type="button" onclick="setFraction(3,10)" class="px-3 py-1.5 rounded-xl subtle-surface font-bold text-sm hover:border-blue-600 border">3/10 (Tre tiondelar)</button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 subtle-surface p-4 rounded-2xl">
+          <div class="space-y-1">
+            <div class="flex justify-between text-sm font-bold">
+              <label for="fracNumSlider" data-i18n="fracNumLabel">Täljare (markerade delar):</label>
+              <span id="fracNumDisplay" class="text-blue-700">3</span>
+            </div>
+            <input type="range" id="fracNumSlider" min="0" max="12" value="3" oninput="updateFractionVisuals()" class="w-full" />
+          </div>
+          <div class="space-y-1">
+            <div class="flex justify-between text-sm font-bold">
+              <label for="fracDenSlider" data-i18n="fracDenLabel">Nämnare (totalt antal delar):</label>
+              <span id="fracDenDisplay" class="text-blue-700">4</span>
+            </div>
+            <input type="range" id="fracDenSlider" min="1" max="12" value="4" oninput="updateFractionVisuals()" class="w-full" />
+          </div>
+        </div>
+
+        <!-- Visuella modeller + Sifferkort -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
+          <!-- Cirkel och Stapel i SVG -->
+          <div class="lg:col-span-6 grid grid-cols-2 gap-4 items-center justify-items-center p-4 rounded-2xl border border-slate-200 bg-white">
+            <div class="text-center space-y-2">
+              <svg id="fractionCircleSvg" viewBox="0 0 160 160" class="w-36 h-36 mx-auto"></svg>
+              <span class="text-xs font-bold text-slate-600" data-i18n="fracCircleLabel">Cirkelmodell</span>
+            </div>
+            <div class="text-center space-y-2 w-full">
+              <svg id="fractionBarSvg" viewBox="0 0 200 80" class="w-full max-w-[200px] h-24 mx-auto"></svg>
+              <span class="text-xs font-bold text-slate-600" data-i18n="fracBarLabel">Rektangelstapel</span>
+            </div>
+          </div>
+
+          <!-- Likvärdighetskorten -->
+          <div class="lg:col-span-6 space-y-3">
+            <div class="grid grid-cols-3 gap-2.5 text-center ltr-math">
+              <div class="p-3.5 rounded-2xl bg-blue-50 border-2 border-blue-300 text-blue-950">
+                <div class="text-xs font-bold uppercase" data-i18n="cardFraction">Bråk</div>
+                <div id="equivFraction" class="text-2xl sm:text-3xl font-bold mt-1">3/4</div>
+              </div>
+              <div class="p-3.5 rounded-2xl bg-emerald-50 border-2 border-emerald-300 text-emerald-950">
+                <div class="text-xs font-bold uppercase" data-i18n="cardDecimal">Decimaltal</div>
+                <div id="equivDecimal" class="text-2xl sm:text-3xl font-bold mt-1">0,75</div>
+              </div>
+              <div class="p-3.5 rounded-2xl bg-amber-50 border-2 border-amber-300 text-amber-950">
+                <div class="text-xs font-bold uppercase" data-i18n="cardPercent">Procent</div>
+                <div id="equivPercent" class="text-2xl sm:text-3xl font-bold mt-1">75 %</div>
+              </div>
+            </div>
+            <p id="fractionPlainExplanation" class="p-3.5 rounded-xl subtle-surface text-sm sm:text-base font-medium"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2.4 ENHETSOMVANDLARE MED EXAKT RÄKNELED -->
+      <div id="mathTool-units" class="hidden card-surface rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
+        <h2 class="text-lg font-bold" data-i18n="unitHeading">Enhetsomvandlare med tydligt räkneled</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 subtle-surface p-4 rounded-2xl">
+          <div>
+            <label for="unitCategory" class="block text-xs font-bold mb-1" data-i18n="unitCatLabel">Kategori:</label>
+            <select id="unitCategory" onchange="populateUnitOptions()" class="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold text-sm">
+              <option value="length">Längd (mm, cm, dm, m, km)</option>
+              <option value="weight">Vikt (g, hg, kg)</option>
+              <option value="volume">Volym (ml, cl, dl, l)</option>
+              <option value="time">Tid (minuter, timmar)</option>
+            </select>
+          </div>
+          <div>
+            <label for="unitValueInput" class="block text-xs font-bold mb-1" data-i18n="unitValLabel">Värde:</label>
+            <input type="number" id="unitValueInput" value="2.5" step="any" oninput="calculateUnitConversion()" class="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold" />
+          </div>
+          <div>
+            <label for="unitFromSelect" class="block text-xs font-bold mb-1" data-i18n="unitFromLabel">Från enhet:</label>
+            <select id="unitFromSelect" onchange="calculateUnitConversion()" class="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold text-sm"></select>
+          </div>
+          <div>
+            <label for="unitToSelect" class="block text-xs font-bold mb-1" data-i18n="unitToLabel">Till enhet:</label>
+            <select id="unitToSelect" onchange="calculateUnitConversion()" class="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold text-sm"></select>
+          </div>
+        </div>
+
+        <div id="unitResultCard" class="p-5 rounded-2xl bg-emerald-50 border-2 border-emerald-300 text-emerald-950 space-y-2">
+          <!-- Fylls av JS -->
+        </div>
+      </div>
+
+      <!-- 2.5 LÖSTA RÄKNEEXEMPEL STEG FÖR STEG -->
+      <div id="mathTool-examples" class="hidden card-surface rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-lg font-bold" data-i18n="exHeading">Lösta vardagsexempel – ett steg i taget</h2>
+            <p class="text-sm opacity-85" data-i18n="exSub">Välj ett exempel och tryck på "Visa nästa steg" i din egen takt.</p>
+          </div>
+          <select id="workedExampleSelect" onchange="loadWorkedExample()" class="min-h-[44px] px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold text-sm">
+            <option value="0">Exempel 1: 25 % rabatt på en tröja (400 kr)</option>
+            <option value="1">Exempel 2: Dela 3 pizzor lika mellan 4 kompisar</option>
+            <option value="2">Exempel 3: Räkna ut tid – hur lång är filmen?</option>
+            <option value="3">Exempel 4: Addition med tiotalsövergång (48 + 27)</option>
+          </select>
+        </div>
+
+        <div class="subtle-surface rounded-2xl p-5 space-y-4">
+          <div id="workedProblemText" class="text-base sm:text-lg font-bold"></div>
+          <div id="workedStepsContainer" class="space-y-2.5"></div>
+          <div class="flex flex-wrap gap-2.5 pt-2">
+            <button type="button" id="btnNextWorkedStep" onclick="revealNextWorkedStep()" class="min-h-[46px] px-5 py-2.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-sm">
+              👉 <span data-i18n="btnNextStep">Visa nästa steg</span>
+            </button>
+            <button type="button" onclick="loadWorkedExample()" class="min-h-[46px] px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold text-sm">
+              🔄 <span data-i18n="btnRestartExample">Börja om exemplet</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- FLIK 3: SPRÅK & TEXTSTÖD (FÖRENKLA & ÖVERSÄTTNINGSHJÄLP)               -->
+    <!-- ===================================================================== -->
+    <section id="panel-language" role="tabpanel" class="hidden space-y-5">
+      <div class="card-surface rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-lg font-bold" data-i18n="langToolTitle">Förstå texten & Språkstöd</h2>
+            <p class="text-sm opacity-85" data-i18n="langToolDesc">
+              Dela upp svåra meningar i kortare rader, hitta viktiga begrepp och få hjälp att ta texten vidare till översättning.
+            </p>
+          </div>
+          <button type="button" onclick="importTextFromReader()" class="min-h-[44px] px-4 py-2 rounded-xl bg-blue-100 text-blue-900 font-bold text-sm hover:bg-blue-200">
+            📥 <span data-i18n="btnImportFromReader">Hämta text från Lässtödet</span>
+          </button>
+        </div>
+
+        <textarea id="langSupportInput" rows="4" oninput="analyzeLanguageSupportText()"
+          class="w-full rounded-xl border-2 border-slate-300 p-3.5 text-base bg-white text-slate-900 focus:border-blue-600"
+          data-i18n-placeholder="langInputPlaceholder"
+          placeholder="Klistra in en text som du vill dela upp eller översätta..."></textarea>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Vänster: Direkt offline-förenkling -->
+          <div class="subtle-surface rounded-2xl p-4 space-y-3">
+            <h3 class="font-bold text-base flex items-center gap-2">
+              ✅ <span data-i18n="offlineSimplifyTitle">Direkt i webbläsaren (100 % privat):</span>
+            </h3>
+            <p class="text-xs opacity-85" data-i18n="offlineSimplifySub">
+              Varje mening placeras på en egen rad med tydlig punkt så att texten blir lugnare att läsa.
+            </p>
+            <div id="simplifiedSentencesList" class="bg-white text-slate-900 rounded-xl p-3.5 border border-slate-200 min-h-[120px] space-y-2 text-sm sm:text-base">
+              <p class="opacity-60 italic" data-i18n="noTextYet">Ingen text inlagd ännu.</p>
+            </div>
+            <div id="extractedKeywordsBox" class="space-y-1.5"></div>
+          </div>
+
+          <!-- Höger: Transparent översättningsstöd -->
+          <div class="subtle-surface rounded-2xl p-4 space-y-3">
+            <h3 class="font-bold text-base flex items-center gap-2">
+              🌍 <span data-i18n="translateSupportTitle">Översättning till annat språk</span>
+            </h3>
+
+            <div class="space-y-1">
+              <label for="targetTranslateLang" class="block text-xs font-bold" data-i18n="targetLangLabel">Välj språk du vill översätta till eller lyssna på:</label>
+              <select id="targetTranslateLang" class="w-full min-h-[42px] px-3 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm font-semibold">
+                <option value="sv">Svenska</option>
+                <option value="en">Engelska (English)</option>
+                <option value="ar">Arabiska (العربية)</option>
+                <option value="bs">Bosniska (Bosanski)</option>
+                <option value="so">Somaliska (Soomaali)</option>
+              </select>
+            </div>
+
+            <!-- Ärlig förklaring om extern tjänst -->
+            <div class="p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 text-xs sm:text-sm space-y-1.5">
+              <p class="font-bold" data-i18n="translateHonestTitle">ℹ️ Viktigt om översättning och integritet:</p>
+              <p data-i18n="translateHonestDesc">
+                Den här sidan skickar aldrig din text automatiskt till någon extern översättningsserver. För att översätta hela meningar mellan språk kan du kopiera texten med knappen nedan och klistra in den i en översättningstjänst du litar på.
+              </p>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+              <button type="button" onclick="copyTextForTranslation()" class="min-h-[44px] px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-sm">
+                📋 <span data-i18n="btnCopyForTranslate">Kopiera texten</span>
+              </button>
+              <button type="button" onclick="speakLanguageTabText()" class="min-h-[44px] px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm">
+                🔊 <span data-i18n="btnSpeakTargetLang">Läs upp på valt språk</span>
+              </button>
+            </div>
+
+            <div class="pt-1 text-xs space-y-1">
+              <p class="font-semibold opacity-80" data-i18n="externalLinksNote">Valfria externa tjänster (öppnas bara om du själv klickar):</p>
+              <div class="flex flex-wrap gap-3">
+                <a href="https://translate.google.com/" target="_blank" rel="noopener noreferrer" class="underline font-bold text-blue-800">Google Översätt ↗</a>
+                <a href="https://www.deepl.com/translator" target="_blank" rel="noopener noreferrer" class="underline font-bold text-blue-800">DeepL ↗</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TRANSPARENT FUNKTIONSÖVERSIKT (FÖR ELEVER, LÄRARE & VÅRDNADSHAVARE)   -->
+    <!-- ===================================================================== -->
+    <details class="card-surface rounded-2xl p-4 sm:p-5 shadow-sm">
+      <summary class="font-bold text-sm sm:text-base cursor-pointer select-none flex items-center justify-between">
+        <span>ℹ️ <span data-i18n="statusSummaryTitle">Om verktyget: Vad fungerar direkt lokalt & vad kräver extern tjänst?</span></span>
+        <span class="text-xs underline opacity-75" data-i18n="clickToExpand">Klicka för att visa</span>
+      </summary>
+      <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm pt-3 border-t border-slate-200/70">
+        <div class="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 space-y-1.5">
+          <h3 class="font-bold text-sm" data-i18n="worksLocallyTitle">✅ Fungerar direkt i webbläsaren (100 % privat):</h3>
+          <ul class="list-disc list-inside space-y-1">
+            <li data-i18n="localItem1">Uppläsning med markering av ord och stycke via enhetens inbyggda talsyntes.</li>
+            <li data-i18n="localItem2">Lokal läsning av textbaserade PDF-filer (utan uppladdning till server).</li>
+            <li data-i18n="localItem3">Alla dyslexianpassningar: typsnitt, textstorlek, radavstånd, färgteman och läslinjal.</li>
+            <li data-i18n="localItem4">Stavelseuppdelning, inbyggd svensk/engelsk begreppsordlista och meningsuppdelare.</li>
+            <li data-i18n="localItem5">Alla räkneverktyg: steg-för-steg-miniräknare, tallinje, bråk/procent, enheter och räkneexempel.</li>
+          </ul>
+        </div>
+        <div class="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 space-y-1.5">
+          <h3 class="font-bold text-sm" data-i18n="needsExternalTitle">⚠️ Kräver extern tjänst eller enhetsstöd:</h3>
+          <ul class="list-disc list-inside space-y-1">
+            <li data-i18n="extItem1"><strong>Inskannade bild-PDF:er:</strong> Saknar textlager och kräver ett separat OCR-program innan texten klistras in.</li>
+            <li data-i18n="extItem2"><strong>Automatisk maskinöversättning:</strong> Kräver att du klistrar in kopierad text i en extern översättningstjänst (av integritetsskäl).</li>
+            <li data-i18n="extItem3"><strong>Röster på olika språk:</strong> Vilka språk som kan läsas upp beror på vilka röster som finns installerade i din dator/mobil/webbläsare.</li>
+          </ul>
+        </div>
+      </div>
+    </details>
+
+  </main>
+
+  <footer class="max-w-6xl w-full mx-auto px-4 py-4 text-center text-xs opacity-75">
+    <p data-i18n="footerNote">Läs & Räkna Lugnt – Utformad för lugnt lärande utan konton, spårning eller lagring av elevdata.</p>
+  </footer>
+
+  <!-- ======================================================================= -->
+  <!-- JAVASCRIPT: KOMPLETT LOGIK FÖR SPRÅK, PDF, TALSYNTES, DYSLEXI & MATTE    -->
+  <!-- ======================================================================= -->
+  <script>
+    // Konfigurera PDF.js worker lokalt från CDN
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+
+    // -------------------------------------------------------------------------
+    // 1. FLERSPRÅKIGT GRÄNSSNITT (SV, EN, AR med RTL, BS, SO)
+    // -------------------------------------------------------------------------
+    const I18N = {
+      sv: {
+        appTitle: "Läs & Räkna Lugnt",
+        appSubtitle: "Stödverktyg i webbläsaren vid dyslexi och dyskalkyli",
+        privacyBadge: "100 % privat – inget sparas eller skickas",
+        uiLangLabel: "Välj språk för sidan",
+        guideTitle: "Så här kommer du igång i 3 enkla steg:",
+        hideGuide: "Dölj guide",
+        showGuide: "Visa guide",
+        step1Title: "Lägg in din text",
+        step1Desc: "Klistra in text i rutan eller välj en PDF från din dator/surfplatta.",
+        step2Title: "Anpassa så det blir lätt att se",
+        step2Desc: "Ändra textstorlek, bakgrundsfärg, typsnitt eller slå på läslinjalen.",
+        step3Title: "Lyssna, förstå eller räkna",
+        step3Desc: "Tryck på Läs upp, klicka på svåra ord eller öppna Räknehjälpen.",
+        tabReading: "1. Lässtöd & Dyslexi",
+        tabMath: "2. Räknehjälp & Dyskalkyli",
+        tabLanguage: "3. Språk & Förenkla text",
+        btnPasteMode: "Klistra in eller skriv text",
+        btnPdfMode: "Välj PDF-fil från enheten",
+        btnLoadSample: "Ladda exempeltext",
+        btnClear: "Rensa",
+        pasteLabel: "Klistra in eller skriv din text här nedan. Texten visas sedan i det anpassade läsfönstret längre ner.",
+        pastePlaceholder: "Klistra in en skoltext, uppgift eller artikel här...",
+        pdfDropTitle: "Välj en PDF-fil från din dator, mobil eller surfplatta",
+        pdfPrivacyNote: "Filen läses helt lokalt i din egen webbläsare. Den laddas aldrig upp till någon server.",
+        pdfChooseBtn: "Bläddra efter PDF-fil...",
+        pdfScanTitle: "Den här PDF-filen verkar bestå av inskannade bilder",
+        pdfScanDesc: "Webbläsaren hittade ingen markerbar text i PDF-filen. Det händer när ett papper har skannats som en bild utan texttolkning (OCR).",
+        pdfScanOptionsTitle: "Så här kan du göra istället:",
+        pdfScanOpt1: "Öppna PDF-filen i ett program med OCR (textigenkänning) och kopiera texten.",
+        pdfScanOpt2: "Klistra sedan in texten i rutan 'Klistra in eller skriv text' här bredvid.",
+        pdfScanFallbackBtn: "Gå till textrutan för att klistra in",
+        pdfBrowserLimitation: "ℹ️ Info: PDF-läsaren fungerar bäst med vanliga digitala PDF-dokument med textlager. Mycket stora filer eller bildbaserade PDF:er utan OCR kräver externt OCR-verktyg.",
+        ttsTitle: "Lyssna på texten",
+        ttsReady: "Redo att läsa",
+        ttsReading: "Läser upp...",
+        ttsPaused: "Pausad",
+        btnReadAll: "Läs upp hela",
+        btnReadSelected: "Läs markerat stycke",
+        btnPause: "Pausa",
+        btnResume: "Fortsätt",
+        btnStop: "Stoppa",
+        voiceLabel: "Välj röst och uppläsningsspråk:",
+        rateLabel: "Uppläsningshastighet:",
+        rateSlow: "0.5x Långsam",
+        rateNormal: "1.0x Normal",
+        rateFast: "1.8x Snabb",
+        dyslexiaSettingsTitle: "Anpassa text & läsmiljö",
+        fontSizeLabel: "Textstorlek",
+        lineHeightLabel: "Radavstånd",
+        letterSpacingLabel: "Bokstavsavstånd",
+        fontFamilyLabel: "Typsnitt (Lättlästa)",
+        themeLabel: "Bakgrund & Kontrast",
+        rulerToggleLabel: "📏 Läslinjal (följer markören)",
+        shortChunksLabel: "✂️ Dela upp i korta stycken",
+        wordHelperTag: "Ordhjälp & Stavelser",
+        listenWordBtn: "Lyssna på ordet",
+        copyWordBtn: "Kopiera",
+        readerWindowTitle: "Läsfönster",
+        readerWindowHint: "💡 Klicka på ett stycke för att markera det, eller klicka på ett ord för förklaring.",
+        mathToolCalc: "Steg-för-steg Miniräknare",
+        mathToolLine: "Interaktiv Tallinje",
+        mathToolFrac: "Bråk, Procent & Decimal",
+        mathToolUnits: "Enhetsomvandlare",
+        mathToolExamples: "Lösta exempel steg för steg",
+        calcHeading: "Tydlig miniräknare",
+        calcStepsTitle: "Så här tänker vi steg för steg:",
+        calcStepsEmpty: "Slå in ett tal, välj ett räknesätt (+, −, ×, ÷), slå in nästa tal och tryck på = så visas uträkningen steg för steg här.",
+        nlHeading: "Interaktiv Tallinje – Se hur talen hoppar",
+        nlSub: "Välj ett starttal och ett hopp framåt (+) eller bakåt (−).",
+        nlRangeLabel: "Skala på tallinjen:",
+        nlStartLabel: "Starta på talet:",
+        nlJumpLabel: "Hoppa (+ framåt / − bakåt):",
+        nlShowJumpBtn: "Visa hoppet",
+        fracHeading: "Bråk, Procent och Decimaltal hänger ihop",
+        fracSub: "Ändra täljaren (hur många delar vi tar) och nämnaren (hur många lika stora delar det finns totalt).",
+        fracPresets: "Snabbval:",
+        fracNumLabel: "Täljare (markerade delar):",
+        fracDenLabel: "Nämnare (totalt antal delar):",
+        fracCircleLabel: "Cirkelmodell",
+        fracBarLabel: "Rektangelstapel",
+        cardFraction: "Bråk",
+        cardDecimal: "Decimaltal",
+        cardPercent: "Procent",
+        unitHeading: "Enhetsomvandlare med tydligt räkneled",
+        unitCatLabel: "Kategori:",
+        unitValLabel: "Värde:",
+        unitFromLabel: "Från enhet:",
+        unitToLabel: "Till enhet:",
+        exHeading: "Lösta vardagsexempel – ett steg i taget",
+        exSub: "Välj ett exempel och tryck på 'Visa nästa steg' i din egen takt.",
+        btnNextStep: "Visa nästa steg",
+        btnRestartExample: "Börja om exemplet",
+        langToolTitle: "Förstå texten & Språkstöd",
+        langToolDesc: "Dela upp svåra meningar i kortare rader, hitta viktiga begrepp och få hjälp att ta texten vidare till översättning.",
+        btnImportFromReader: "Hämta text från Lässtödet",
+        langInputPlaceholder: "Klistra in en text som du vill dela upp eller översätta...",
+        offlineSimplifyTitle: "Direkt i webbläsaren (100 % privat):",
+        offlineSimplifySub: "Varje mening placeras på en egen rad med tydlig punkt så att texten blir lugnare att läsa.",
+        noTextYet: "Ingen text inlagd ännu.",
+        translateSupportTitle: "Översättning till annat språk",
+        targetLangLabel: "Välj språk du vill översätta till eller lyssna på:",
+        translateHonestTitle: "ℹ️ Viktigt om översättning och integritet:",
+        translateHonestDesc: "Den här sidan skickar aldrig din text automatiskt till någon extern översättningsserver. För att översätta hela meningar mellan språk kan du kopiera texten med knappen nedan och klistra in den i en översättningstjänst du litar på.",
+        btnCopyForTranslate: "Kopiera texten",
+        btnSpeakTargetLang: "Läs upp på valt språk",
+        externalLinksNote: "Valfria externa tjänster (öppnas bara om du själv klickar):",
+        statusSummaryTitle: "Om verktyget: Vad fungerar direkt lokalt & vad kräver extern tjänst?",
+        clickToExpand: "Klicka för att visa",
+        worksLocallyTitle: "✅ Fungerar direkt i webbläsaren (100 % privat):",
+        localItem1: "Uppläsning med markering av ord och stycke via enhetens inbyggda talsyntes.",
+        localItem2: "Lokal läsning av textbaserade PDF-filer (utan uppladdning till server).",
+        localItem3: "Alla dyslexianpassningar: typsnitt, textstorlek, radavstånd, färgteman och läslinjal.",
+        localItem4: "Stavelseuppdelning, inbyggd svensk/engelsk begreppsordlista och meningsuppdelare.",
+        localItem5: "Alla räkneverktyg: steg-för-steg-miniräknare, tallinje, bråk/procent, enheter och räkneexempel.",
+        needsExternalTitle: "⚠️ Kräver extern tjänst eller enhetsstöd:",
+        extItem1: "Inskannade bild-PDF:er: Saknar textlager och kräver ett separat OCR-program innan texten klistras in.",
+        extItem2: "Automatisk maskinöversättning: Kräver att du klistrar in kopierad text i en extern översättningstjänst (av integritetsskäl).",
+        extItem3: "Röster på olika språk: Vilka språk som kan läsas upp beror på vilka röster som finns installerade i din dator/mobil/webbläsare.",
+        footerNote: "Läs & Räkna Lugnt – Utformad för lugnt lärande utan konton, spårning eller lagring av elevdata."
+      },
+      en: {
+        appTitle: "Read & Calculate Calmly",
+        appSubtitle: "Browser-based support tool for dyslexia and dyscalculia",
+        privacyBadge: "100% private – nothing is saved or uploaded",
+        uiLangLabel: "Select interface language",
+        guideTitle: "Get started in 3 simple steps:",
+        hideGuide: "Hide guide",
+        showGuide: "Show guide",
+        step1Title: "Add your text",
+        step1Desc: "Paste text into the box or choose a PDF file from your device.",
+        step2Title: "Customize for easy reading",
+        step2Desc: "Adjust text size, background color, font, or turn on the reading ruler.",
+        step3Title: "Listen, understand, or calculate",
+        step3Desc: "Press Read aloud, click tricky words, or open Math Helper.",
+        tabReading: "1. Reading & Dyslexia",
+        tabMath: "2. Math & Dyscalculia",
+        tabLanguage: "3. Language & Simplify",
+        btnPasteMode: "Paste or type text",
+        btnPdfMode: "Choose PDF from device",
+        btnLoadSample: "Load sample text",
+        btnClear: "Clear",
+        pasteLabel: "Paste or type your text below. It will appear in the adapted reading window underneath.",
+        pastePlaceholder: "Paste a school text, assignment, or article here...",
+        pdfDropTitle: "Choose a PDF file from your computer, phone, or tablet",
+        pdfPrivacyNote: "The file is processed locally in your browser. It is never uploaded to any server.",
+        pdfChooseBtn: "Browse for PDF file...",
+        pdfScanTitle: "This PDF appears to contain scanned images",
+        pdfScanDesc: "The browser found no selectable text inside this PDF. This happens when pages are scanned as images without text recognition (OCR).",
+        pdfScanOptionsTitle: "What you can do instead:",
+        pdfScanOpt1: "Open the PDF in an app with OCR (text recognition) and copy the text.",
+        pdfScanOpt2: "Then paste the text into the 'Paste or type text' tab here.",
+        pdfScanFallbackBtn: "Go to text box to paste",
+        pdfBrowserLimitation: "ℹ️ Info: The PDF reader works best with digital PDF documents containing a text layer. Image-based PDFs require an external OCR tool.",
+        ttsTitle: "Listen to the text",
+        ttsReady: "Ready to read",
+        ttsReading: "Reading aloud...",
+        ttsPaused: "Paused",
+        btnReadAll: "Read all",
+        btnReadSelected: "Read selected paragraph",
+        btnPause: "Pause",
+        btnResume: "Resume",
+        btnStop: "Stop",
+        voiceLabel: "Select voice and reading language:",
+        rateLabel: "Reading speed:",
+        rateSlow: "0.5x Slow",
+        rateNormal: "1.0x Normal",
+        rateFast: "1.8x Fast",
+        dyslexiaSettingsTitle: "Customize text & reading view",
+        fontSizeLabel: "Text size",
+        lineHeightLabel: "Line spacing",
+        letterSpacingLabel: "Letter spacing",
+        fontFamilyLabel: "Font (Reader-friendly)",
+        themeLabel: "Background & Contrast",
+        rulerToggleLabel: "📏 Reading ruler (follows cursor)",
+        shortChunksLabel: "✂️ Split into shorter paragraphs",
+        wordHelperTag: "Word Helper & Syllables",
+        listenWordBtn: "Listen to word",
+        copyWordBtn: "Copy",
+        readerWindowTitle: "Reading Window",
+        readerWindowHint: "💡 Click any paragraph to select it, or click any word for an explanation.",
+        mathToolCalc: "Step-by-Step Calculator",
+        mathToolLine: "Interactive Number Line",
+        mathToolFrac: "Fractions, Percent & Decimals",
+        mathToolUnits: "Unit Converter",
+        mathToolExamples: "Worked Examples Step by Step",
+        calcHeading: "Clear Step-by-Step Calculator",
+        calcStepsTitle: "How we solve it step by step:",
+        calcStepsEmpty: "Enter a number, choose an operator (+, −, ×, ÷), enter the second number, and press = to see the step-by-step breakdown.",
+        nlHeading: "Interactive Number Line – Watch numbers jump",
+        nlSub: "Pick a starting number and a jump forward (+) or backward (−).",
+        nlRangeLabel: "Number line scale:",
+        nlStartLabel: "Start at number:",
+        nlJumpLabel: "Jump (+ forward / − backward):",
+        nlShowJumpBtn: "Show jump",
+        fracHeading: "Fractions, Percentages, and Decimals Connected",
+        fracSub: "Adjust the numerator (parts chosen) and denominator (total equal parts).",
+        fracPresets: "Presets:",
+        fracNumLabel: "Numerator (shaded parts):",
+        fracDenLabel: "Denominator (total equal parts):",
+        fracCircleLabel: "Circle model",
+        fracBarLabel: "Bar model",
+        cardFraction: "Fraction",
+        cardDecimal: "Decimal",
+        cardPercent: "Percent",
+        unitHeading: "Unit Converter with Exact Calculation Steps",
+        unitCatLabel: "Category:",
+        unitValLabel: "Value:",
+        unitFromLabel: "From unit:",
+        unitToLabel: "To unit:",
+        exHeading: "Worked Everyday Examples – One Step at a Time",
+        exSub: "Choose an example and click 'Show next step' at your own pace.",
+        btnNextStep: "Show next step",
+        btnRestartExample: "Restart example",
+        langToolTitle: "Understand Text & Language Support",
+        langToolDesc: "Break long sentences into short lines, extract key terms, and copy text safely for translation.",
+        btnImportFromReader: "Import text from Reading tab",
+        langInputPlaceholder: "Paste text you want to break down or translate...",
+        offlineSimplifyTitle: "Directly in your browser (100% private):",
+        offlineSimplifySub: "Each sentence is placed on its own bullet line to make reading calmer.",
+        noTextYet: "No text entered yet.",
+        translateSupportTitle: "Translate to another language",
+        targetLangLabel: "Choose language to translate into or listen to:",
+        translateHonestTitle: "ℹ️ Important about translation and privacy:",
+        translateHonestDesc: "This page never sends your text automatically to any external translation server. To translate full sentences, copy your text with the button below and paste it into a translation service you trust.",
+        btnCopyForTranslate: "Copy text",
+        btnSpeakTargetLang: "Read aloud in selected language",
+        externalLinksNote: "Optional external tools (only opened if you click):",
+        statusSummaryTitle: "About this tool: What works locally & what requires an external service?",
+        clickToExpand: "Click to expand",
+        worksLocallyTitle: "✅ Works immediately in the browser (100% private):",
+        localItem1: "Text-to-speech with word and paragraph highlighting via your device's built-in voices.",
+        localItem2: "Local text extraction from digital PDF files (no server upload).",
+        localItem3: "All dyslexia settings: fonts, text size, spacing, color themes, and reading ruler.",
+        localItem4: "Syllable splitting, built-in Swedish/English glossary, and sentence splitter.",
+        localItem5: "All math tools: step-by-step calculator, number line, fractions/percent, units, and worked examples.",
+        needsExternalTitle: "⚠️ Requires external service or device support:",
+        extItem1: "Scanned image PDFs: Lack a text layer and require a separate OCR tool before pasting text.",
+        extItem2: "Automatic machine translation: Requires pasting copied text into an external translation service (for privacy).",
+        extItem3: "Voices in specific languages: Available speech voices depend on what is installed on your device/browser.",
+        footerNote: "Read & Calculate Calmly – Built for calm learning without accounts, tracking, or student data storage."
+      },
+      ar: {
+        appTitle: "اقرأ واحسب بهدوء",
+        appSubtitle: "أداة دعم تفاعلية لعسر القراءة وعسر الحساب في المتصفح",
+        privacyBadge: "خصوصية 100% – لا يتم حفظ أو إرسال أي ملفات",
+        uiLangLabel: "اختر لغة الواجهة",
+        guideTitle: "ابدأ في 3 خطوات بسيطة:",
+        hideGuide: "إخفاء الدليل",
+        showGuide: "إظهار الدليل",
+        step1Title: "أدخل النص الخاص بك",
+        step1Desc: "الصق النص في المربع أو اختر ملف PDF من جهازك.",
+        step2Title: "خصص العرض لسهولة القراءة",
+        step2Desc: "غيّر حجم الخط أو لون الخلفية أو نوع الخط أو شغّل مسطرة القراءة.",
+        step3Title: "استمع أو افهم أو احسب",
+        step3Desc: "اضغط على اقرأ بصوت عالٍ، أو انقر على الكلمات الصعبة، أو افتح مساعد الحساب.",
+        tabReading: "1. دعم القراءة وعسر القراءة",
+        tabMath: "2. مساعد الحساب وعسر الحساب",
+        tabLanguage: "3. اللغة وتبسيط النص",
+        btnPasteMode: "لصق أو كتابة نص",
+        btnPdfMode: "اختر ملف PDF من الجهاز",
+        btnLoadSample: "تحميل نص تجريبي",
+        btnClear: "مسح",
+        pasteLabel: "الصق أو اكتب النص أدناه. سيظهر النص في نافذة القراءة المخصصة في الأسفل.",
+        pastePlaceholder: "الصق نصًا دراسيًا أو واجبًا أو مقالًا هنا...",
+        pdfDropTitle: "اختر ملف PDF من جهاز الكمبيوتر أو الهاتف أو الجهاز اللوحي",
+        pdfPrivacyNote: "تتم قراءة الملف محليًا بالكامل في متصفحك. لا يتم رفعه إلى أي خادم.",
+        pdfChooseBtn: "استعراض ملف PDF...",
+        pdfScanTitle: "يبدو أن ملف PDF هذا يتكون من صور ممسوحة ضوئيًا",
+        pdfScanDesc: "لم يجد المتصفح نصًا قابلًا للتحديد داخل الملف. يحدث هذا عند مسح الأوراق كصور بدون التعرف الضوئي على الحروف (OCR).",
+        pdfScanOptionsTitle: "ما يمكنك فعله بدلاً من ذلك:",
+        pdfScanOpt1: "افتح الملف في برنامج يدعم OCR وانسخ النص.",
+        pdfScanOpt2: "ثم الصق النص في مربع 'لصق أو كتابة نص' هنا.",
+        pdfScanFallbackBtn: "انتقل إلى مربع النص للصق",
+        pdfBrowserLimitation: "ℹ️ معلومة: قارئ PDF يعمل بشكل أفضل مع الملفات الرقمية التي تحتوي على طبقة نصية.",
+        ttsTitle: "الاستماع إلى النص",
+        ttsReady: "جاهز للقراءة",
+        ttsReading: "جارٍ القراءة...",
+        ttsPaused: "متوقف مؤقتًا",
+        btnReadAll: "قراءة الكل",
+        btnReadSelected: "قراءة الفقرة المحددة",
+        btnPause: "إيقاف مؤقت",
+        btnResume: "متابعة",
+        btnStop: "إيقاف",
+        voiceLabel: "اختر الصوت ولغة القراءة:",
+        rateLabel: "سرعة القراءة:",
+        rateSlow: "0.5x بطيء",
+        rateNormal: "1.0x عادي",
+        rateFast: "1.8x سريع",
+        dyslexiaSettingsTitle: "تخصيص النص وبيئة القراءة",
+        fontSizeLabel: "حجم الخط",
+        lineHeightLabel: "تباعد الأسطر",
+        letterSpacingLabel: "تباعد الحروف",
+        fontFamilyLabel: "نوع الخط",
+        themeLabel: "لون الخلفية والتباين",
+        rulerToggleLabel: "📏 مسطرة القراءة",
+        shortChunksLabel: "✂️ تقسيم النص إلى فقرات قصيرة",
+        wordHelperTag: "مساعد الكلمات والمقاطع",
+        listenWordBtn: "استمع للكلمة",
+        copyWordBtn: "نسخ",
+        readerWindowTitle: "نافذة القراءة",
+        readerWindowHint: "💡 انقر على أي فقرة لتحديدها، أو انقر على أي كلمة لشرحها.",
+        mathToolCalc: "آلة حاسبة خطوة بخطوة",
+        mathToolLine: "خط الأعداد التفاعلي",
+        mathToolFrac: "الكسور والنسب المئوية",
+        mathToolUnits: "محول الوحدات",
+        mathToolExamples: "أمثلة محلولة خطوة بخطوة",
+        calcHeading: "آلة حاسبة واضحة خطوة بخطوة",
+        calcStepsTitle: "طريقة الحل خطوة بخطوة:",
+        calcStepsEmpty: "أدخل رقمًا، اختر العملية (+، −، ×، ÷)، أدخل الرقم الثاني واضغط = لرؤية الخطوات.",
+        nlHeading: "خط الأعداد التفاعلي – شاهد قفزات الأرقام",
+        nlSub: "اختر رقم البداية ومقدار القفزة للأمام (+) أو للخلف (−).",
+        nlRangeLabel: "مقياس خط الأعداد:",
+        nlStartLabel: "ابدأ من الرقم:",
+        nlJumpLabel: "اقفز (+ للأمام / − للخلف):",
+        nlShowJumpBtn: "إظهار القفزة",
+        fracHeading: "العلاقة بين الكسور والنسب المئوية والأعداد العشرية",
+        fracSub: "غيّر البسط (الأجزاء المختارة) والمقام (إجمالي الأجزاء المتساوية).",
+        fracPresets: "اختيارات سريعة:",
+        fracNumLabel: "البسط (الأجزاء الملونة):",
+        fracDenLabel: "المقام (إجمالي الأجزاء):",
+        fracCircleLabel: "نموذج الدائرة",
+        fracBarLabel: "نموذج الشريط",
+        cardFraction: "كسر",
+        cardDecimal: "عدد عشري",
+        cardPercent: "نسبة مئوية",
+        unitHeading: "محول الوحدات مع خطوات الحساب",
+        unitCatLabel: "الفئة:",
+        unitValLabel: "القيمة:",
+        unitFromLabel: "من وحدة:",
+        unitToLabel: "إلى وحدة:",
+        exHeading: "أمثلة يومية محلولة – خطوة بـخطوة",
+        exSub: "اختر مثالًا واضغط على 'إظهار الخطوة التالية' بالسرعة التي تناسبك.",
+        btnNextStep: "إظهار الخطوة التالية",
+        btnRestartExample: "إعادة المثال",
+        langToolTitle: "فهم النص ودعم اللغة",
+        langToolDesc: "قسّم الجمل الطويلة إلى أسطر قصيرة، واستخرج الكلمات المهمة، وانسخ النص للترجمة بأمان.",
+        btnImportFromReader: "جلب النص من نافذة القراءة",
+        langInputPlaceholder: "الصق النص الذي تريد تبسيطه أو ترجمته...",
+        offlineSimplifyTitle: "مباشرة في المتصفح (خصوصية 100%):",
+        offlineSimplifySub: "يتم وضع كل جملة في سطر مستقل لتسهيل القراءة.",
+        noTextYet: "لم يتم إدخال نص بعد.",
+        translateSupportTitle: "الترجمة إلى لغة أخرى",
+        targetLangLabel: "اختر اللغة للترجمة أو الاستماع:",
+        translateHonestTitle: "ℹ️ تنبيه مهم حول الترجمة والخصوصية:",
+        translateHonestDesc: "لا ترسل هذه الصفحة نصك تلقائيًا إلى أي خادم ترجمة خارجي. لترجمة الجمل الكاملة، انسخ النص بالزر أدناه والصقه في خدمة ترجمة تثق بها.",
+        btnCopyForTranslate: "نسخ النص",
+        btnSpeakTargetLang: "قراءة النص باللغة المختارة",
+        externalLinksNote: "خدمات خارجية اختيارية (تُفتح فقط عند النقر عليها):",
+        statusSummaryTitle: "حول الأداة: ما الذي يعمل محليًا وما الذي يتطلب خدمة خارجية؟",
+        clickToExpand: "انقر للعرض",
+        worksLocallyTitle: "✅ يعمل مباشرة في المتصفح (خصوصية 100%):",
+        localItem1: "القراءة الصوتية مع تظليل الكلمات والفقرات عبر أصوات الجهاز.",
+        localItem2: "قراءة ملفات PDF النصية محليًا دون رفعها لأي خادم.",
+        localItem3: "جميع إعدادات عسر القراءة: الخطوط، الحجم، التباعد، الألوان ومسطرة القراءة.",
+        localItem4: "تقسيم المقاطع الصوتية والقاموس المدمج وتقسيم الجمل.",
+        localItem5: "جميع أدوات الرياضيات: الآلة الحاسبة، خط الأعداد، الكسور، الوحدات والأمثلة.",
+        needsExternalTitle: "⚠️ يتطلب خدمة خارجية أو دعم الجهاز:",
+        extItem1: "ملفات PDF المصورة: تتطلب برنامج OCR لاستخراج النص قبل لصقه.",
+        extItem2: "الترجمة الآلية الكاملة: تتطلب لصق النص المنسوخ في خدمة ترجمة خارجية لحماية الخصوصية.",
+        extItem3: "الأصوات بلغات مختلفة: تعتمد على الأصوات المثبتة في جهازك أو متصفحك.",
+        footerNote: "اقرأ واحسب بهدوء – مصمم للتعلم الهادئ بدون حسابات أو تتبع أو تخزين بيانات."
+      },
+      bs: {
+        appTitle: "Čitaj i Računaj Mirno",
+        appSubtitle: "Alat za podršku u pregledniku za disleksiju i diskalkuliju",
+        privacyBadge: "100% privatno – ništa se ne sprema niti šalje",
+        uiLangLabel: "Odaberi jezik sučelja",
+        guideTitle: "Započni u 3 jednostavna koraka:",
+        hideGuide: "Sakrij vodič",
+        showGuide: "Prikaži vodič",
+        step1Title: "Unesi svoj tekst",
+        step1Desc: "Zalijepi tekst u polje ili odaberi PDF datoteku sa svog uređaja.",
+        step2Title: "Prilagodi izgled za lakše čitanje",
+        step2Desc: "Promijeni veličinu slova, boju pozadine, font ili uključi ravnalo za čitanje.",
+        step3Title: "Slušaj, razumij ili računaj",
+        step3Desc: "Pritisni Čitaj naglas, klikni na teške riječi ili otvori Pomoć za matematiku.",
+        tabReading: "1. Podrška za čitanje i disleksiju",
+        tabMath: "2. Matematika i diskalkulija",
+        tabLanguage: "3. Jezik i pojednostavljenje teksta",
+        btnPasteMode: "Zalijepi ili upiši tekst",
+        btnPdfMode: "Odaberi PDF sa uređaja",
+        btnLoadSample: "Učitaj primjer teksta",
+        btnClear: "Obriši",
+        pasteLabel: "Zalijepi ili upiši tekst ispod. Tekst će se prikazati u prilagođenom prozoru za čitanje.",
+        pastePlaceholder: "Zalijepi školski tekst, zadatak ili članak ovdje...",
+        pdfDropTitle: "Odaberi PDF datoteku sa računara, telefona ili tableta",
+        pdfPrivacyNote: "Datoteka se obrađuje lokalno u tvom pregledniku i nikada se ne šalje na server.",
+        pdfChooseBtn: "Potraži PDF datoteku...",
+        pdfScanTitle: "Izgleda da ovaj PDF sadrži skenirane slike",
+        pdfScanDesc: "Preglednik nije pronašao tekst u ovom PDF-u. To se dešava kada su stranice skenirane kao slike bez OCR prepoznavanja teksta.",
+        pdfScanOptionsTitle: "Šta možeš učiniti umjesto toga:",
+        pdfScanOpt1: "Otvori PDF u programu sa OCR-om i kopiraj tekst.",
+        pdfScanOpt2: "Zatim zalijepi tekst u polje 'Zalijepi ili upiši tekst'.",
+        pdfScanFallbackBtn: "Idi na polje za lijepljenje teksta",
+        pdfBrowserLimitation: "ℹ️ Info: PDF čitač najbolje radi sa digitalnim PDF dokumentima koji imaju tekstualni sloj.",
+        ttsTitle: "Slušaj tekst",
+        ttsReady: "Spremno za čitanje",
+        ttsReading: "Čita se...",
+        ttsPaused: "Pauzirano",
+        btnReadAll: "Čitaj sve",
+        btnReadSelected: "Čitaj označeni odlomak",
+        btnPause: "Pauza",
+        btnResume: "Nastavi",
+        btnStop: "Zaustavi",
+        voiceLabel: "Odaberi glas i jezik čitanja:",
+        rateLabel: "Brzina čitanja:",
+        rateSlow: "0.5x Sporo",
+        rateNormal: "1.0x Normalno",
+        rateFast: "1.8x Brzo",
+        dyslexiaSettingsTitle: "Prilagodi tekst i okruženje za čitanje",
+        fontSizeLabel: "Veličina teksta",
+        lineHeightLabel: "Razmak između redova",
+        letterSpacingLabel: "Razmak između slova",
+        fontFamilyLabel: "Font (Čitljivi fontovi)",
+        themeLabel: "Pozadina i kontrast",
+        rulerToggleLabel: "📏 Ravnalo za čitanje",
+        shortChunksLabel: "✂️ Podijeli na kraće odlomke",
+        wordHelperTag: "Pomoć za riječi i slogove",
+        listenWordBtn: "Poslušaj riječ",
+        copyWordBtn: "Kopiraj",
+        readerWindowTitle: "Prozor za čitanje",
+        readerWindowHint: "💡 Klikni na odlomak da ga označiš ili na riječ za objašnjenje.",
+        mathToolCalc: "Kalkulator korak po korak",
+        mathToolLine: "Interaktivna brojevna prava",
+        mathToolFrac: "Razlomci, procenti i decimale",
+        mathToolUnits: "Pretvarač mjernih jedinica",
+        mathToolExamples: "Riješeni primjeri korak po korak",
+        calcHeading: "Jasan kalkulator korak po korak",
+        calcStepsTitle: "Kako računamo korak po korak:",
+        calcStepsEmpty: "Unesi broj, odaberi računsku operaciju (+, −, ×, ÷), unesi drugi broj i pritisni =.",
+        nlHeading: "Interaktivna brojevna prava – Prati skokove brojeva",
+        nlSub: "Odaberi početni broj i skok naprijed (+) ili nazad (−).",
+        nlRangeLabel: "Skala na brojevnoj pravoj:",
+        nlStartLabel: "Počni od broja:",
+        nlJumpLabel: "Skoči (+ naprijed / − nazad):",
+        nlShowJumpBtn: "Prikaži skok",
+        fracHeading: "Povezanost razlomaka, procenata i decimalnih brojeva",
+        fracSub: "Promijeni brojnik (odabrane dijelove) i nazivnik (ukupan broj jednakih dijelova).",
+        fracPresets: "Brzi izbor:",
+        fracNumLabel: "Brojnik (obojeni dijelovi):",
+        fracDenLabel: "Nazivnik (ukupno jednakih dijelova):",
+        fracCircleLabel: "Kružni model",
+        fracBarLabel: "Pravougaoni model",
+        cardFraction: "Razlomak",
+        cardDecimal: "Decimalni broj",
+        cardPercent: "Procenat",
+        unitHeading: "Pretvarač jedinica sa prikazom postupka",
+        unitCatLabel: "Kategorija:",
+        unitValLabel: "Vrijednost:",
+        unitFromLabel: "Iz jedinice:",
+        unitToLabel: "U jedinicu:",
+        exHeading: "Riješeni primjeri iz svakodnevnice – korak po korak",
+        exSub: "Odaberi primjer i klikni 'Prikaži sljedeći korak' svojim tempom.",
+        btnNextStep: "Prikaži sljedeći korak",
+        btnRestartExample: "Počni primjer ispočetka",
+        langToolTitle: "Razumijevanje teksta i jezička podrška",
+        langToolDesc: "Podijeli duge rečenice u kraće redove, izdvoji ključne pojmove i sigurno kopiraj tekst za prevod.",
+        btnImportFromReader: "Preuzmi tekst iz prozora za čitanje",
+        langInputPlaceholder: "Zalijepi tekst koji želiš podijeliti ili prevesti...",
+        offlineSimplifyTitle: "Direktno u pregledniku (100% privatno):",
+        offlineSimplifySub: "Svaka rečenica je u svom redu radi lakšeg praćenja.",
+        noTextYet: "Tekst još nije unesen.",
+        translateSupportTitle: "Prevod na drugi jezik",
+        targetLangLabel: "Odaberi jezik za prevod ili slušanje:",
+        translateHonestTitle: "ℹ️ Važno o prevodu i privatnosti:",
+        translateHonestDesc: "Ova stranica nikada automatski ne šalje tvoj tekst na vanjske servere. Za prevod cijelih rečenica kopiraj tekst dugmetom ispod i zalijepi ga u servis za prevođenje kojem vjeruješ.",
+        btnCopyForTranslate: "Kopiraj tekst",
+        btnSpeakTargetLang: "Čitaj na odabranom jeziku",
+        externalLinksNote: "Opcionalni vanjski alati (otvaraju se samo ako klikneš):",
+        statusSummaryTitle: "O alatu: Šta radi lokalno, a šta zahtijeva vanjski servis?",
+        clickToExpand: "Klikni za prikaz",
+        worksLocallyTitle: "✅ Radi odmah u pregledniku (100% privatno):",
+        localItem1: "Čitanje naglas uz označavanje riječi i odlomaka putem glasova na uređaju.",
+        localItem2: "Lokalno čitanje tekstualnih PDF datoteka bez slanja na server.",
+        localItem3: "Sve prilagodbe za disleksiju: fontovi, veličina, razmaci, teme i ravnalo.",
+        localItem4: "Podjela na slogove, ugrađeni rječnik pojmova i razdvajanje rečenica.",
+        localItem5: "Svi matematički alati: kalkulator, brojevna prava, razlomci, jedinice i primjeri.",
+        needsExternalTitle: "⚠️ Zahtijeva vanjski servis ili podršku uređaja:",
+        extItem1: "Skenirani slikovni PDF-ovi: Zahtijevaju poseban OCR alat prije lijepljenja teksta.",
+        extItem2: "Automatski mašinski prevod: Zahtijeva lijepljenje kopiranog teksta u vanjski prevodilac.",
+        extItem3: "Glasovi na različitim jezicima: Zavise od glasova instaliranih na tvom uređaju.",
+        footerNote: "Čitaj i Računaj Mirno – Napravljeno za mirno učenje bez računa, praćenja ili spremanja podataka."
+      },
+      so: {
+        appTitle: "Si Deggan u Akhri & u Xisaabi",
+        appSubtitle: "Qalabka taageerada akhriska (dyslexia) iyo xisaabta (dyscalculia) ee biraawsarka",
+        privacyBadge: "100% gaar ah – waxba lama kaydiyo lamana diro",
+        uiLangLabel: "Dooro luqadda bogga",
+        guideTitle: "Ku bilow 3 tallaabo oo fudud:",
+        hideGuide: "Qari hagaha",
+        showGuide: "Muuji hagaha",
+        step1Title: "Geli qoraalkaaga",
+        step1Desc: "Ku dheji qoraal sanduuqa ama ka dooro fayl PDF ah qalabkaaga.",
+        step2Title: "Habee si ay u fududaato aragtidu",
+        step2Desc: "Beddel cabbirka qoraalka, midabka gadaasha, farta, ama shid mastaradda akhriska.",
+        step3Title: "Dhagayso, faham, ama xisaabi",
+        step3Desc: "Riix Cod u akhri, guji erayada adag, ama fur Caawiyaha Xisaabta.",
+        tabReading: "1. Taageerada Akhriska & Dyslexia",
+        tabMath: "2. Caawiyaha Xisaabta & Dyscalculia",
+        tabLanguage: "3. Luqadda & Fududaynta Qoraalka",
+        btnPasteMode: "Ku dheji ama qor qoraal",
+        btnPdfMode: "Ka dooro PDF qalabkaaga",
+        btnLoadSample: "Soo geli qoraal tusaale ah",
+        btnClear: "Tirtir",
+        pasteLabel: "Hoos ku dheji ama ku qor qoraalkaaga. Wuxuu ka soo muuqan doonaa daaqadda akhriska.",
+        pastePlaceholder: "Halkan ku dheji qoraal dugsi, layli, ama maqaal...",
+        pdfDropTitle: "Ka dooro fayl PDF ah kombiyuutarkaaga, taleefankaaga, ama tablet-kaaga",
+        pdfPrivacyNote: "Faylka waxaa lagu akhriyaa gudaha biraawsarkaaga oo keliya. Weligii looma diro server.",
+        pdfChooseBtn: "Raadi fayl PDF ah...",
+        pdfScanTitle: "Faylkan PDF-ka ah wuxuu u muuqdaa sawirro la iskaan gareeyay",
+        pdfScanDesc: "Biraawsarku kama helin qoraal la dooran karo gudaha PDF-kan. Waxaa loo baahan yahay barnaamij OCR ah.",
+        pdfScanOptionsTitle: "Waxaad samayn kartaa sidan:",
+        pdfScanOpt1: "Ku fur PDF-ka barnaamij leh OCR oo koobiyee qoraalka.",
+        pdfScanOpt2: "Kadib ku dheji qoraalka qaybta 'Ku dheji ama qor qoraal'.",
+        pdfScanFallbackBtn: "Tag sanduuqa qoraalka si aad ugu dhejiso",
+        pdfBrowserLimitation: "ℹ️ Xog: Akhriyaha PDF wuxuu si fiican ula shaqeeyaa PDF-yada leh qoraalka dhijitaalka ah.",
+        ttsTitle: "Dhagayso qoraalka",
+        ttsReady: "Diyaar u ah akhris",
+        ttsReading: "Waa la akhrinayaa...",
+        ttsPaused: "Waa la hakiyay",
+        btnReadAll: "Akhri dhammaan",
+        btnReadSelected: "Akhri qaybta la doortay",
+        btnPause: "Haki",
+        btnResume: "Sii wad",
+        btnStop: "Jooji",
+        voiceLabel: "Dooro codka iyo luqadda akhriska:",
+        rateLabel: "Xawaaraha akhriska:",
+        rateSlow: "0.5x Gaabis",
+        rateNormal: "1.0x Caadi",
+        rateFast: "1.8x Dhakhso",
+        dyslexiaSettingsTitle: "Habee qoraalka & deegaanka akhriska",
+        fontSizeLabel: "Cabbirka qoraalka",
+        lineHeightLabel: "Masaafada sadarrada",
+        letterSpacingLabel: "Masaafada xarfaha",
+        fontFamilyLabel: "Nooca farta",
+        themeLabel: "Midabka gadaasha & kala duwanaanshaha",
+        rulerToggleLabel: "📏 Mastaradda akhriska",
+        shortChunksLabel: "✂️ U qaybi qaybo gaagaaban",
+        wordHelperTag: "Caawiyaha Erayada & Xubnaha",
+        listenWordBtn: "Dhagayso erayga",
+        copyWordBtn: "Koobiyee",
+        readerWindowTitle: "Daaqadda Akhriska",
+        readerWindowHint: "💡 Guji qayb si aad u doorato, ama guji eray si laguu sharraxo.",
+        mathToolCalc: "Xisaabiye Tallaabo-tallaabo ah",
+        mathToolLine: "Xarriiqda Tirada ee Falgalka",
+        mathToolFrac: "Jajabka, Boqolkiiba & Tobanlaha",
+        mathToolUnits: "Beddelaha Halbeegyada",
+        mathToolExamples: "Tusaalooyin la xalliyay tallaabo-tallaabo",
+        calcHeading: "Xisaabiye cad oo tallaabo-tallaabo ah",
+        calcStepsTitle: "Sida aan u xisaabinayno tallaabo-tallaabo:",
+        calcStepsEmpty: "Geli tiro, dooro calaamad (+, −, ×, ÷), geli tirada labaad oo riix = si aad u aragto tallaabooyinka.",
+        nlHeading: "Xarriiqda Tirada – Arag sida tiradu u booddo",
+        nlSub: "Dooro tirada bilowga iyo booddo hore (+) ama dib (−).",
+        nlRangeLabel: "Miisaanka xarriiqda tirada:",
+        nlStartLabel: "Ka bilow tirada:",
+        nlJumpLabel: "Bood (+ hore / − dib):",
+        nlShowJumpBtn: "Muuji booddada",
+        fracHeading: "Jajabka, Boqolkiiba iyo Tobanlaha way xiriiraan",
+        fracSub: "Beddel sarreeyaha (qaybaha la doortay) iyo hooseeyaha (wadarta qaybaha isku midka ah).",
+        fracPresets: "Doorasho degdeg ah:",
+        fracNumLabel: "Sarreeye (qaybaha midabaysan):",
+        fracDenLabel: "Hooseeye (wadarta qaybaha):",
+        fracCircleLabel: "Qaabka goobada",
+        fracBarLabel: "Qaabka leydiga",
+        cardFraction: "Jajab",
+        cardDecimal: "Tobanle",
+        cardPercent: "Boqolkiiba",
+        unitHeading: "Beddelaha halbeegyada oo leh jidka xisaabta",
+        unitCatLabel: "Qaybta:",
+        unitValLabel: "Qiimaha:",
+        unitFromLabel: "Ka beddel halbeegga:",
+        unitToLabel: "U beddel halbeegga:",
+        exHeading: "Tusaalooyin maalinle ah – hal tallaabo markiiba",
+        exSub: "Dooro tusaale oo riix 'Muuji tallaabada xigta' xawaarahaaga.",
+        btnNextStep: "Muuji tallaabada xigta",
+        btnRestartExample: "Dib u bilow tusaalaha",
+        langToolTitle: "Fahamka Qoraalka & Taageerada Luqadda",
+        langToolDesc: "U kala qaybi jumladaha dhaadheer sadarro gaagaaban, hel erayada muhiimka ah, si ammaan ahna u koobiyee qoraalka.",
+        btnImportFromReader: "Ka soo qaado qoraalka daaqadda akhriska",
+        langInputPlaceholder: "Ku dheji qoraalka aad rabto inaad fududayso ama turjunto...",
+        offlineSimplifyTitle: "Si toos ah biraawsarka (100% gaar ah):",
+        offlineSimplifySub: "Jumlad kasta waxaa la geliyaa sadar u gaar ah si akhrisku u dego.",
+        noTextYet: "Weli qoraal lama gelin.",
+        translateSupportTitle: "U turjumidda luqad kale",
+        targetLangLabel: "Dooro luqadda aad rabto inaad u turjunto ama ku dhagaysato:",
+        translateHonestTitle: "ℹ️ Muhiim ku saabsan turjumaadda iyo sirta:",
+        translateHonestDesc: "Boggkani weligii si toos ah uguma diro qoraalkaaga server turjumaad oo dibadda ah. Si aad u turjunto jumlado buuxa, koobiyee qoraalka oo ku dheji adeeg turjumaad oo aad ku kalsoon tahay.",
+        btnCopyForTranslate: "Koobiyee qoraalka",
+        btnSpeakTargetLang: "Ku akhri luqadda la doortay",
+        externalLinksNote: "Adeegyo dibadda ah oo ikhtiyaari ah (waxay furmaan oo keliya haddii aad gujiso):",
+        statusSummaryTitle: "Ku saabsan qalabka: Maxaa si toos ah u shaqeeya & maxaa u baahan adeeg dibadda ah?",
+        clickToExpand: "Guji si aad u aragto",
+        worksLocallyTitle: "✅ Si toos ah ayuu ugu shaqeeyaa biraawsarka (100% gaar ah):",
+        localItem1: "Cod ku akhrin leh calaamadaynta erayada iyo qaybaha iyadoo la adeegsanayo codadka qalabka.",
+        localItem2: "Akhrinta faylasha PDF-ka ee gudaha iyadoon loo dirin server.",
+        localItem3: "Dhammaan habaynta dyslexia: farta, cabbirka, masaafada, midabada iyo mastaradda akhriska.",
+        localItem4: "Kala qaybinta xubnaha erayga, qaamuuska ku dhex jira iyo kala saarista jumladaha.",
+        localItem5: "Dhammaan qalabka xisaabta: xisaabiyaha, xarriiqda tirada, jajabka, halbeegyada iyo tusaalooyinka.",
+        needsExternalTitle: "⚠️ Wuxuu u baahan yahay adeeg dibadda ah ama taageerada qalabka:",
+        extItem1: "PDF-yada sawirrada ah: Waxay u baahan yihiin barnaamij OCR ah ka hor inta aan la dhejin qoraalka.",
+        extItem2: "Turjumaadda tooska ah: Waxay u baahan tahay in qoraalka la koobiyeeyay lagu dhejiyo adeeg turjumaad.",
+        extItem3: "Codadka luqadaha kala duwan: Waxay ku xiran yihiin codadka ku rakiban qalabkaaga.",
+        footerNote: "Si Deggan u Akhri & u Xisaabi – Waxaa loo dhisay waxbarasho deggan oo aan lahayn akoonno ama kaydinta xogta ardayga."
+      }
+    };
+
+    let currentUILang = 'sv';
+
+    function changeUILanguage(lang) {
+      currentUILang = lang;
+      const htmlEl = document.documentElement;
+      htmlEl.lang = lang;
+      htmlEl.dir = (lang === 'ar') ? 'rtl' : 'ltr';
+
+      const dict = I18N[lang] || I18N.sv;
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (dict[key]) el.textContent = dict[key];
+      });
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (dict[key]) el.placeholder = dict[key];
+      });
+
+      populateVoices();
+      updateFractionVisuals();
+      calculateUnitConversion();
+    }
+
+    function t(key) {
+      return (I18N[currentUILang] && I18N[currentUILang][key]) || I18N.sv[key] || key;
+    }
+
+    // -------------------------------------------------------------------------
+    // 2. HJÄLPFUNKTIONER FÖR GRÄNSSNITT (TOAST, FLIKAR, GUIDE, LÄSLINJAL)
+    // -------------------------------------------------------------------------
+    let toastTimer = null;
+    function showToast(msg) {
+      const banner = document.getElementById('toastBanner');
+      document.getElementById('toastMessage').textContent = msg;
+      banner.classList.remove('hidden');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(hideToast, 4500);
+    }
+
+    function hideToast() {
+      document.getElementById('toastBanner').classList.add('hidden');
+    }
+
+    function toggleQuickGuide() {
+      const steps = document.getElementById('quickGuideSteps');
+      const btn = document.getElementById('toggleGuideBtn');
+      const isHidden = steps.classList.toggle('hidden');
+      btn.textContent = isHidden ? t('showGuide') : t('hideGuide');
+    }
+
+    function switchMainTab(tabName) {
+      ['reading', 'math', 'language'].forEach(name => {
+        const panel = document.getElementById(`panel-${name}`);
+        const btn = document.getElementById(`tabBtn-${name}`);
+        const active = (name === tabName);
+        panel.classList.toggle('hidden', !active);
+        btn.setAttribute('aria-selected', active ? 'true' : 'false');
+        if (active) {
+          btn.className = 'tab-btn min-h-[54px] px-4 py-3 rounded-2xl font-bold text-base flex items-center justify-center gap-2.5 shadow-sm transition bg-blue-700 text-white border-2 border-blue-700';
+        } else {
+          btn.className = 'tab-btn min-h-[54px] px-4 py-3 rounded-2xl font-bold text-base flex items-center justify-center gap-2.5 shadow-sm transition card-surface hover:border-blue-600';
+        }
+      });
+
+      if (tabName === 'math') {
+        drawNumberLine();
+        updateFractionVisuals();
+      }
+    }
+
+    // Läslinjal (följer mus, touch och piltangenter)
+    let rulerActive = false;
+    function toggleReadingRuler(enabled) {
+      rulerActive = enabled;
+      const overlay = document.getElementById('readingRulerOverlay');
+      overlay.classList.toggle('hidden', !enabled);
+    }
+
+    function moveRuler(clientY) {
+      if (!rulerActive) return;
+      const overlay = document.getElementById('readingRulerOverlay');
+      const clampedY = Math.max(40, Math.min(window.innerHeight - 60, clientY - 27));
+      overlay.style.top = `${clampedY}px`;
+    }
+
+    window.addEventListener('mousemove', e => moveRuler(e.clientY));
+    window.addEventListener('touchmove', e => {
+      if (e.touches && e.touches.length > 0) moveRuler(e.touches[0].clientY);
+    }, { passive: true });
+
+    // -------------------------------------------------------------------------
+    // 3. TEXTINMATNING, LOKAL PDF-LÄSNING & DYSLEXIANPASSNINGAR
+    // -------------------------------------------------------------------------
+    const SAMPLE_TEXTS = {
+      sv: "Fotosyntesen är en av de viktigaste processerna på jorden. Med hjälp av solljus, vatten och koldioxid tillverkar gröna växter druvsocker och syre.\n\nUtan växternas fotosyntes skulle varken människor eller djur kunna andas. Dessutom fungerar skogar och hav som viktiga ekosystem som balanserar klimatet på vår planet.",
+      en: "Photosynthesis is one of the most important processes on Earth. Using sunlight, water, and carbon dioxide, green plants produce glucose and oxygen.\n\nWithout photosynthesis, neither humans nor animals could breathe. Forests and oceans also act as vital ecosystems that help balance the climate on our planet.",
+      ar: "التمثيل الضوئي هو أحد أهم العمليات الحيوية على كوكب الأرض. تستخدم النباتات الخضراء ضوء الشمس والماء وثاني أكسيد الكربون لإنتاج السكر والأكسجين.\n\nبدون هذه العملية لا يمكن للإنسان أو الحيوان التنفس. كما تساعد الغابات والمحيطات في الحفاظ على توازن المناخ.",
+      bs: "Fotosinteza je jedan od najvažnijih procesa na Zemlji. Pomoću sunčeve svjetlosti, vode i ugljen-dioksida zelene biljke proizvode šećer i kisik.\n\nBez fotosinteze ni ljudi ni životinje ne bi mogli disati. Šume i okeani također čuvaju ravnotežu klime na našoj planeti.",
+      so: "Footosintesis waa mid ka mid ah hababka ugu muhiimsan dhulka. Dhirta cagaaran waxay adeegsadaan iftiinka qorraxda, biyo iyo kaarboon laba ogsaydh si ay u sameeyaan sonkor iyo ogsijiin.\n\nLa'aanteed dadka iyo xayawaanku ma neefsan karaan. Kaymaha iyo baduhu waxay sidoo kale ilaaliyaan dheelitirka cimilada."
+    };
+
+    let paragraphsData = []; // [{ text: string, words: [{ text, startChar, endChar }] }]
+    let selectedParagraphIndex = 0;
+    let currentExplainedWord = '';
+
+    function switchInputSource(mode) {
+      const isPaste = (mode === 'paste');
+      document.getElementById('inputArea-paste').classList.toggle('hidden', !isPaste);
+      document.getElementById('inputArea-pdf').classList.toggle('hidden', isPaste);
+
+      document.getElementById('sourceBtn-paste').className = isPaste
+        ? 'min-h-[44px] px-4 py-2 rounded-xl font-bold text-sm bg-blue-700 text-white shadow-sm'
+        : 'min-h-[44px] px-4 py-2 rounded-xl font-bold text-sm subtle-surface border border-slate-300 hover:border-blue-600';
+
+      document.getElementById('sourceBtn-pdf').className = !isPaste
+        ? 'min-h-[44px] px-4 py-2 rounded-xl font-bold text-sm bg-blue-700 text-white shadow-sm'
+        : 'min-h-[44px] px-4 py-2 rounded-xl font-bold text-sm subtle-surface border border-slate-300 hover:border-blue-600';
+    }
+
+    function loadSampleText() {
+      stopSpeech();
+      switchInputSource('paste');
+      const sample = SAMPLE_TEXTS[currentUILang] || SAMPLE_TEXTS.sv;
+      document.getElementById('rawTextInput').value = sample;
+      selectedParagraphIndex = 0;
+      syncTextToReader();
+      showToast(currentUILang === 'sv' ? 'Exempeltext laddad!' : 'Sample text loaded!');
+    }
+
+    function clearReaderText() {
+      stopSpeech();
+      document.getElementById('rawTextInput').value = '';
+      document.getElementById('pdfFileNameDisplay').textContent = '';
+      document.getElementById('pdfScannedWarning').classList.add('hidden');
+      selectedParagraphIndex = 0;
+      closeWordCard();
+      syncTextToReader();
+    }
+
+    // Lokal PDF-läsning med PDF.js (0 byte skickas till server)
+    async function handlePdfUpload(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      stopSpeech();
+      document.getElementById('pdfScannedWarning').classList.add('hidden');
+      const loadingBox = document.getElementById('pdfLoadingBox');
+      const loadingText = document.getElementById('pdfLoadingText');
+      const fileDisplay = document.getElementById('pdfFileNameDisplay');
+
+      fileDisplay.textContent = `📄 ${file.name}`;
+      loadingBox.classList.remove('hidden');
+
+      try {
+        if (!window.pdfjsLib) {
+          throw new Error('PDF-biblioteket kunde inte laddas.');
+        }
+
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const totalPages = pdf.numPages;
+        let extractedPages = [];
+
+        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+          loadingText.textContent = `Läser sida ${pageNum} av ${totalPages} lokalt...`;
+          const page = await pdf.getPage(pageNum);
+          const textContent = await page.getTextContent();
+          const pageStrings = textContent.items.map(item => item.str);
+          const joined = pageStrings.join(' ').replace(/\s+/g, ' ').trim();
+          if (joined) {
+            extractedPages.push(joined);
+          }
+        }
+
+        loadingBox.classList.add('hidden');
+        const fullText = extractedPages.join('\n\n').trim();
+
+        if (!fullText || fullText.length < 5) {
+          // Skannad bild-PDF utan textlager
+          document.getElementById('pdfScannedWarning').classList.remove('hidden');
+          return;
+        }
+
+        document.getElementById('rawTextInput').value = fullText;
+        selectedParagraphIndex = 0;
+        syncTextToReader();
+        showToast(`PDF inläst lokalt (${totalPages} sidor)!`);
+      } catch (err) {
+        loadingBox.classList.add('hidden');
+        document.getElementById('pdfScannedWarning').classList.remove('hidden');
+      } finally {
+        event.target.value = '';
+      }
+    }
+
+    function updateDyslexiaStyle() {
+      const size = document.getElementById('fontSizeSlider').value;
+      const line = document.getElementById('lineHeightSlider').value;
+      const spacing = document.getElementById('letterSpacingSlider').value;
+      const font = document.getElementById('fontFamilySelect').value;
+
+      document.getElementById('fontSizeVal').textContent = `${size} px`;
+      document.getElementById('lineHeightVal').textContent = line;
+      document.getElementById('letterSpacingVal').textContent = `${spacing} em`;
+
+      const root = document.documentElement;
+      root.style.setProperty('--reader-size', `${size}px`);
+      root.style.setProperty('--reader-line', line);
+      root.style.setProperty('--reader-spacing', `${spacing}em`);
+      root.style.setProperty('--reader-font', font);
+    }
+
+    function setColorTheme(themeName) {
+      document.body.classList.remove('theme-cream', 'theme-yellow', 'theme-blue', 'theme-contrast', 'theme-dark');
+      document.body.classList.add(`theme-${themeName}`);
+    }
+
+    // Dela upp text i stycken och ord för läsfönstret
+    function syncTextToReader() {
+      const raw = document.getElementById('rawTextInput').value.trim();
+      const shortChunks = document.getElementById('shortChunksToggle').checked;
+      const container = document.getElementById('readerDisplay');
+
+      if (!raw) {
+        paragraphsData = [];
+        container.innerHTML = `<div class="p-6 text-center opacity-70 text-base">${t('pastePlaceholder')}</div>`;
+        return;
+      }
+
+      let rawBlocks = raw.split(/\n+/).map(s => s.trim()).filter(Boolean);
+
+      // Om "Dela upp i korta stycken" är på, dela långa stycken vid meningsgränser
+      if (shortChunks) {
+        const chunked = [];
+        rawBlocks.forEach(block => {
+          const sentences = block.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [block];
+          for (let i = 0; i < sentences.length; i += 2) {
+            const pair = sentences.slice(i, i + 2).join(' ').trim();
+            if (pair) chunked.push(pair);
+          }
+        });
+        rawBlocks = chunked;
+      }
+
+      if (selectedParagraphIndex >= rawBlocks.length) {
+        selectedParagraphIndex = 0;
+      }
+
+      paragraphsData = [];
+      container.innerHTML = '';
+
+      rawBlocks.forEach((pText, pIdx) => {
+        const pEl = document.createElement('div');
+        pEl.className = 'reader-paragraph' + (pIdx === selectedParagraphIndex ? ' active-paragraph' : '');
+        pEl.dataset.pIndex = pIdx;
+        pEl.onclick = (e) => {
+          if (e.target.classList.contains('reader-word')) return;
+          selectParagraph(pIdx);
+        };
+
+        const words = [];
+        const tokenRegex = /\S+/g;
+        let match;
+        while ((match = tokenRegex.exec(pText)) !== null) {
+          const wObj = {
+            text: match[0],
+            startChar: match.index,
+            endChar: match.index + match[0].length
+          };
+          words.push(wObj);
+
+          const span = document.createElement('span');
+          span.className = 'reader-word';
+          span.textContent = wObj.text;
+          span.dataset.pIndex = pIdx;
+          span.dataset.wIndex = words.length - 1;
+          span.onclick = (e) => {
+            e.stopPropagation();
+            selectParagraph(pIdx);
+            explainWord(wObj.text);
+          };
+
+          pEl.appendChild(span);
+          pEl.appendChild(document.createTextNode(' '));
+        }
+
+        paragraphsData.push({ text: pText, words });
+        container.appendChild(pEl);
+      });
+    }
+
+    function selectParagraph(pIdx) {
+      selectedParagraphIndex = pIdx;
+      document.querySelectorAll('.reader-paragraph').forEach((el, idx) => {
+        el.classList.toggle('active-paragraph', idx === pIdx);
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // 4. INBYGGD ORDFÖRKLARING & STAVELSEUPPDELNING
+    // -------------------------------------------------------------------------
+    const LOCAL_DICTIONARY = {
+      // Svenska skolord
+      "fotosyntesen": "När gröna växter använder solljus, vatten och koldioxid för att göra socker (energi) och syre.",
+      "fotosyntes": "När gröna växter använder solljus, vatten och koldioxid för att göra socker (energi) och syre.",
+      "ekosystem": "Ett område i naturen där växter, djur och miljö lever tillsammans och påverkar varandra.",
+      "koldioxid": "En osynlig gas i luften som vi andas ut och som växter behöver för att växa.",
+      "druvsocker": "En enkel form av socker som ger snabb energi till celler i växter, djur och människor.",
+      "demokrati": "Folkstyre – ett land där alla medborgare får vara med och bestämma genom fria val.",
+      "riksdagen": "Sveriges parlament med 349 ledamöter som stiftar lagar och bestämmer om statens pengar.",
+      "regeringen": "De ministrar och statsministern som styr landet och ser till att riksdagens beslut genomförs.",
+      "hypotes": "En kvalificerad gissning om vad som kommer att hända i en undersökning eller ett experiment.",
+      "konsekvens": "Följden eller resultatet av något som har hänt.",
+      "källa": "Den plats, bok, person eller webbsida där information kommer ifrån.",
+      "källkritik": "Att granska om information är sann, pålitlig och vem som har skapat den.",
+      "procent": "Betyder 'hundradel'. 50 procent (50 %) är samma sak som hälften (50 av 100).",
+      "täljare": "Talet högst upp i ett bråk. Visar hur många delar vi har valt.",
+      "nämnare": "Talet längst ner i ett bråk. Visar hur många lika stora delar det hela är delat i.",
+      "processerna": "En serie steg eller händelser som leder fram till ett resultat.",
+      "process": "En utveckling eller ett förlopp i flera steg.",
+      "planet": "En stor himlakropp som kretsar kring en stjärna, till exempel jorden runt solen.",
+      // Engelska skolord
+      "photosynthesis": "How green plants use sunlight, water, and carbon dioxide to make sugar (food) and oxygen.",
+      "ecosystems": "Communities where plants, animals, and their environment live and interact together.",
+      "ecosystem": "A community where plants, animals, and their environment live and interact together.",
+      "democracy": "A system of government where citizens vote to choose their leaders and laws.",
+      "hypothesis": "An educated guess that you can test in a science experiment.",
+      "fraction": "A number that shows equal parts of a whole, written with a top and bottom number."
+    };
+
+    function splitIntoSyllables(word) {
+      const clean = word.replace(/[.,!?;:"()«»]/g, '');
+      if (clean.length <= 3) return clean;
+      // Enkel vokal-konsonant-uppdelning för nordiska & engelska ord
+      const vowels = 'aeiouyåäöAEIOUYÅÄÖ';
+      let result = '';
+      for (let i = 0; i < clean.length; i++) {
+        result += clean[i];
+        if (i < clean.length - 2) {
+          const currIsVowel = vowels.includes(clean[i]);
+          const nextIsCons = !vowels.includes(clean[i + 1]);
+          const afterIsVowel = vowels.includes(clean[i + 2]);
+          if (currIsVowel && nextIsCons && afterIsVowel) {
+            result += '·';
+          }
+        }
+      }
+      return result;
+    }
+
+    function explainWord(rawWord) {
+      const clean = rawWord.replace(/[.,!?;:"()«»]/g, '').trim();
+      if (!clean) return;
+      currentExplainedWord = clean;
+
+      const lower = clean.toLowerCase();
+      const syllables = splitIntoSyllables(clean);
+      const meaning = LOCAL_DICTIONARY[lower];
+
+      document.getElementById('explainedWordTitle').textContent = clean;
+      document.getElementById('explainedWordSyllables').textContent = `Stavelser: ${syllables} (${clean.length} bokstäver)`;
+
+      const meaningEl = document.getElementById('explainedWordMeaning');
+      if (meaning) {
+        meaningEl.textContent = meaning;
+      } else {
+        meaningEl.textContent = currentUILang === 'sv'
+          ? `Ordet "${clean}" finns inte i den inbyggda lokala ordlistan (ingen extern ordbok anropas av integritetsskäl). Prova att lyssna på ordet eller dela upp det i stavelserna ovan.`
+          : `The word "${clean}" is not in the built-in offline glossary (no external dictionary is contacted for privacy). Try listening to it or reading the syllables above.`;
+      }
+
+      document.getElementById('wordExplanationCard').classList.remove('hidden');
+    }
+
+    function closeWordCard() {
+      document.getElementById('wordExplanationCard').classList.add('hidden');
+    }
+
+    function speakSingleWord() {
+      if (!currentExplainedWord || !('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(currentExplainedWord);
+      const voice = getSelectedVoice();
+      if (voice) u.voice = voice;
+      u.rate = 0.85;
+      window.speechSynthesis.speak(u);
+    }
+
+    function copyExplainedWord() {
+      if (!currentExplainedWord) return;
+      copyStringToClipboard(currentExplainedWord);
+    }
+
+    function copyStringToClipboard(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast(currentUILang === 'sv' ? 'Kopierat till urklipp!' : 'Copied to clipboard!');
+      } catch (e) {
+        showToast('Kunde inte kopiera automatiskt.');
+      }
+      document.body.removeChild(ta);
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. TALSYNTES (WEB SPEECH API) MED REALTIDSMARKERING AV ORD & STYCKE
+    // -------------------------------------------------------------------------
+    let availableVoices = [];
+    let speechFallbackTimer = null;
+    let isSpeakingQueue = false;
+    let queueParagraphs = [];
+    let currentQueueIdx = 0;
+
+    function populateVoices() {
+      if (!('speechSynthesis' in window)) {
+        document.getElementById('voiceAvailabilityNotice').textContent = 'Webbläsaren stöder tyvärr inte uppläsning (Web Speech API).';
+        return;
+      }
+      availableVoices = window.speechSynthesis.getVoices() || [];
+      const select = document.getElementById('voiceSelect');
+      const prevVal = select.value;
+      select.innerHTML = '';
+
+      if (availableVoices.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'Standardröst (laddar enhetens röster...)';
+        select.appendChild(opt);
+        return;
+      }
+
+      // Sortera så att valda plattformsspråk (sv, en, ar, bs, so) hamnar överst
+      const priority = [currentUILang, 'sv', 'en', 'ar', 'bs', 'so'];
+      const sorted = [...availableVoices].sort((a, b) => {
+        const aLang = a.lang.slice(0, 2).toLowerCase();
+        const bLang = b.lang.slice(0, 2).toLowerCase();
+        const aIdx = priority.indexOf(aLang);
+        const bIdx = priority.indexOf(bLang);
+        if (aIdx !== -1 && bIdx === -1) return -1;
+        if (aIdx === -1 && bIdx !== -1) return 1;
+        if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+        return a.name.localeCompare(b.name);
+      });
+
+      sorted.forEach(voice => {
+        const opt = document.createElement('option');
+        opt.value = voice.name;
+        opt.textContent = `${voice.name} (${voice.lang})`;
+        select.appendChild(opt);
+      });
+
+      if (prevVal && sorted.some(v => v.name === prevVal)) {
+        select.value = prevVal;
+      } else {
+        const matchLang = sorted.find(v => v.lang.toLowerCase().startsWith(currentUILang));
+        if (matchLang) select.value = matchLang.name;
+      }
+      handleVoiceChange();
+    }
+
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.onvoiceschanged = populateVoices;
+    }
+
+    function getSelectedVoice() {
+      const name = document.getElementById('voiceSelect').value;
+      return availableVoices.find(v => v.name === name) || null;
+    }
+
+    function handleVoiceChange() {
+      const voice = getSelectedVoice();
+      const notice = document.getElementById('voiceAvailabilityNotice');
+      if (!voice) {
+        notice.textContent = '';
+        return;
+      }
+      const hasCurrentLang = availableVoices.some(v => v.lang.toLowerCase().startsWith(currentUILang));
+      if (!hasCurrentLang) {
+        notice.textContent = `ℹ️ Din webbläsare saknar en installerad röst för "${currentUILang.toUpperCase()}". Vald röst: ${voice.lang}.`;
+      } else {
+        notice.textContent = `Aktivt uppläsningsspråk: ${voice.lang}`;
+      }
+    }
+
+    function updateSpeechRateLabel(val) {
+      const num = parseFloat(val);
+      let desc = 'Normal';
+      if (num < 0.8) desc = 'Mycket lugn';
+      else if (num < 1.0) desc = 'Lugn';
+      else if (num > 1.2) desc = 'Snabb';
+      document.getElementById('speechRateValue').textContent = `${num.toFixed(1)}x (${desc})`;
+    }
+
+    function setSpeechButtonsState(state) {
+      // state: 'idle' | 'speaking' | 'paused'
+      document.getElementById('btnSpeakAll').disabled = (state === 'speaking');
+      document.getElementById('btnSpeakSelected').disabled = (state === 'speaking');
+      document.getElementById('btnPauseSpeech').disabled = (state !== 'speaking');
+      document.getElementById('btnResumeSpeech').disabled = (state !== 'paused');
+      document.getElementById('btnStopSpeech').disabled = (state === 'idle');
+
+      const badge = document.getElementById('ttsStatusBadge');
+      if (state === 'speaking') badge.textContent = t('ttsReading');
+      else if (state === 'paused') badge.textContent = t('ttsPaused');
+      else badge.textContent = t('ttsReady');
+    }
+
+    function clearWordHighlights() {
+      document.querySelectorAll('.reader-word.speaking-word').forEach(el => el.classList.remove('speaking-word'));
+    }
+
+    function highlightWordElement(pIdx, wIdx) {
+      clearWordHighlights();
+      const selector = `.reader-word[data-p-index="${pIdx}"][data-w-index="${wIdx}"]`;
+      const el = document.querySelector(selector);
+      if (el) {
+        el.classList.add('speaking-word');
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+
+    function startSpeech(mode) {
+      if (!('speechSynthesis' in window)) {
+        showToast('Din webbläsare stöder inte uppläsning.');
+        return;
+      }
+      if (paragraphsData.length === 0) {
+        showToast(currentUILang === 'sv' ? 'Lägg in text först innan du trycker på Läs upp.' : 'Please enter text first.');
+        return;
+      }
+
+      stopSpeech();
+
+      if (mode === 'selected') {
+        queueParagraphs = [selectedParagraphIndex];
+      } else {
+        queueParagraphs = paragraphsData.map((_, idx) => idx);
+      }
+
+      currentQueueIdx = 0;
+      isSpeakingQueue = true;
+      setSpeechButtonsState('speaking');
+      speakNextParagraphInQueue();
+    }
+
+    function speakNextParagraphInQueue() {
+      if (!isSpeakingQueue || currentQueueIdx >= queueParagraphs.length) {
+        stopSpeech();
+        return;
+      }
+
+      const pIdx = queueParagraphs[currentQueueIdx];
+      const pData = paragraphsData[pIdx];
+      selectParagraph(pIdx);
+
+      const utterance = new SpeechSynthesisUtterance(pData.text);
+      const voice = getSelectedVoice();
+      if (voice) {
+        utterance.voice = voice;
+        utterance.lang = voice.lang;
+      }
+      const rate = parseFloat(document.getElementById('speechRateRange').value) || 0.9;
+      utterance.rate = rate;
+
+      let receivedBoundary = false;
+
+      // Realtidsmarkering via onboundary när rösten stöder det
+      utterance.onboundary = (event) => {
+        if (event.name === 'word' || typeof event.charIndex === 'number') {
+          receivedBoundary = true;
+          clearInterval(speechFallbackTimer);
+          const charIdx = event.charIndex;
+          const wIdx = pData.words.findIndex(w => charIdx >= w.startChar && charIdx <= w.endChar + 1);
+          if (wIdx !== -1) {
+            highlightWordElement(pIdx, wIdx);
+          }
+        }
+      };
+
+      // Fallback-timer för webbläsare/röster som inte skickar onboundary-events
+      let fallbackWordIdx = 0;
+      const estimatedMsPerWord = Math.max(180, Math.round(420 / rate));
+      clearInterval(speechFallbackTimer);
+      if (pData.words.length > 0) {
+        highlightWordElement(pIdx, 0);
+        speechFallbackTimer = setInterval(() => {
+          if (receivedBoundary || window.speechSynthesis.paused) return;
+          fallbackWordIdx++;
+          if (fallbackWordIdx < pData.words.length) {
+            highlightWordElement(pIdx, fallbackWordIdx);
+          }
+        }, estimatedMsPerWord);
+      }
+
+      utterance.onend = () => {
+        clearInterval(speechFallbackTimer);
+        currentQueueIdx++;
+        if (isSpeakingQueue && currentQueueIdx < queueParagraphs.length) {
+          speakNextParagraphInQueue();
+        } else {
+          stopSpeech();
+        }
+      };
+
+      utterance.onerror = () => {
+        clearInterval(speechFallbackTimer);
+        stopSpeech();
+      };
+
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function pauseSpeech() {
+      if ('speechSynthesis' in window && window.speechSynthesis.speaking) {
+        window.speechSynthesis.pause();
+        setSpeechButtonsState('paused');
+      }
+    }
+
+    function resumeSpeech() {
+      if ('speechSynthesis' in window && window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+        setSpeechButtonsState('speaking');
+      }
+    }
+
+    function stopSpeech() {
+      isSpeakingQueue = false;
+      clearInterval(speechFallbackTimer);
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      clearWordHighlights();
+      setSpeechButtonsState('idle');
+    }
+
+    // -------------------------------------------------------------------------
+    // 6. DYSKALKYLI-VERKTYG (MINIRÄKNARE, TALLINJE, BRÅK, ENHETER, EXEMPEL)
+    // -------------------------------------------------------------------------
+    function switchMathTool(toolName) {
+      ['calc', 'numberline', 'fractions', 'units', 'examples'].forEach(name => {
+        document.getElementById(`mathTool-${name}`).classList.toggle('hidden', name !== toolName);
+        const btn = document.getElementById(`mathSubBtn-${name}`);
+        btn.className = (name === toolName)
+          ? 'math-sub-btn min-h-[44px] px-4 py-2 rounded-xl font-bold text-sm bg-blue-700 text-white'
+          : 'math-sub-btn min-h-[44px] px-4 py-2 rounded-xl font-bold text-sm subtle-surface hover:border-blue-600';
+      });
+      if (toolName === 'numberline') drawNumberLine();
+      if (toolName === 'fractions') updateFractionVisuals();
+      if (toolName === 'units') calculateUnitConversion();
+    }
+
+    // 6.1 Steg-för-steg Miniräknare
+    let calcCurrent = '0';
+    let calcPrev = null;
+    let calcOp = null;
+    let calcResetNext = false;
+
+    function updateCalcScreen() {
+      document.getElementById('calcMainDisplay').textContent = calcCurrent.replace('.', ',');
+      const opSymbols = { '+': '+', '-': '−', '*': '×', '/': '÷' };
+      document.getElementById('calcExpressionDisplay').textContent =
+        (calcPrev !== null && calcOp) ? `${String(calcPrev).replace('.', ',')} ${opSymbols[calcOp]}` : ' ';
+    }
+
+    function calcDigit(d) {
+      if (calcResetNext) {
+        calcCurrent = (d === '.') ? '0.' : d;
+        calcResetNext = false;
+      } else {
+        if (d === '.' && calcCurrent.includes('.')) return;
+        calcCurrent = (calcCurrent === '0' && d !== '.') ? d : calcCurrent + d;
+      }
+      updateCalcScreen();
+    }
+
+    function calcBackspace() {
+      if (calcResetNext) return;
+      calcCurrent = calcCurrent.length > 1 ? calcCurrent.slice(0, -1) : '0';
+      updateCalcScreen();
+    }
+
+    function calcClear() {
+      calcCurrent = '0';
+      calcPrev = null;
+      calcOp = null;
+      calcResetNext = false;
+      updateCalcScreen();
+      document.getElementById('calcStepExplanation').innerHTML = `<p class="opacity-85">${t('calcStepsEmpty')}</p>`;
+    }
+
+    function calcOperator(op) {
+      if (calcPrev !== null && !calcResetNext) {
+        calcEquals();
+      }
+      calcPrev = parseFloat(calcCurrent);
+      calcOp = op;
+      calcResetNext = true;
+      updateCalcScreen();
+    }
+
+    function calcEquals() {
+      if (calcPrev === null || !calcOp) return;
+      const a = calcPrev;
+      const b = parseFloat(calcCurrent);
+      let res = 0;
+
+      if (calcOp === '+') res = a + b;
+      else if (calcOp === '-') res = a - b;
+      else if (calcOp === '*') res = a * b;
+      else if (calcOp === '/') {
+        if (b === 0) {
+          showToast('Det går inte att dela med 0.');
+          return;
+        }
+        res = a / b;
+      }
+
+      const rounded = Math.round(res * 10000) / 10000;
+      renderCalcSteps(a, b, calcOp, rounded);
+
+      calcCurrent = String(rounded);
+      calcPrev = null;
+      calcOp = null;
+      calcResetNext = true;
+      updateCalcScreen();
+    }
+
+    function renderCalcSteps(a, b, op, res) {
+      const box = document.getElementById('calcStepExplanation');
+      const fmt = n => String(n).replace('.', ',');
+      let html = '';
+
+      if (op === '+') {
+        if (Number.isInteger(a) && Number.isInteger(b) && a >= 10 && b >= 10 && a < 1000 && b < 1000) {
+          const aTens = Math.floor(a / 10) * 10;
+          const aOnes = a % 10;
+          const bTens = Math.floor(b / 10) * 10;
+          const bOnes = b % 10;
+          html = `
+            <div class="p-3 rounded-xl bg-white text-slate-900 border border-slate-200 space-y-1.5">
+              <p class="font-bold text-blue-800">Uppgift: ${fmt(a)} + ${fmt(b)}</p>
+              <p><strong>Steg 1 (Dela upp tiotal och ental):</strong><br>${a} = ${aTens} + ${aOnes} &nbsp;och&nbsp; ${b} = ${bTens} + ${bOnes}</p>
+              <p><strong>Steg 2 (Lägg ihop tiotalen):</strong><br>${aTens} + ${bTens} = <strong>${aTens + bTens}</strong></p>
+              <p><strong>Steg 3 (Lägg ihop entalen):</strong><br>${aOnes} + ${bOnes} = <strong>${aOnes + bOnes}</strong></p>
+              <p class="pt-1 border-t border-slate-200 text-emerald-800 font-bold">Svar: ${aTens + bTens} + ${aOnes + bOnes} = ${fmt(res)}</p>
+            </div>`;
+        } else {
+          html = `
+            <div class="p-3 rounded-xl bg-white text-slate-900 border border-slate-200 space-y-1.5">
+              <p class="font-bold text-blue-800">Addition: ${fmt(a)} + ${fmt(b)}</p>
+              <p>Vi börjar på <strong>${fmt(a)}</strong> och lägger till <strong>${fmt(b)}</strong>.</p>
+              <p class="text-emerald-800 font-bold">Svar: ${fmt(res)}</p>
+            </div>`;
+        }
+      } else if (op === '-') {
+        html = `
+          <div class="p-3 rounded-xl bg-white text-slate-900 border border-slate-200 space-y-1.5">
+            <p class="font-bold text-blue-800">Subtraktion: ${fmt(a)} − ${fmt(b)}</p>
+            <p>Vi utgår från <strong>${fmt(a)}</strong> och tar bort <strong>${fmt(b)}</strong>.</p>
+            <p class="text-emerald-800 font-bold">Skillnaden (svaret) är: ${fmt(res)}</p>
+          </div>`;
+      } else if (op === '*') {
+        const repeatInfo = (Number.isInteger(a) && a > 0 && a <= 8)
+          ? `<p><strong>Tänk upprepad addition:</strong> ${a} grupper med ${fmt(b)} i varje = ${Array(a).fill(fmt(b)).join(' + ')}</p>`
+          : '';
+        html = `
+          <div class="p-3 rounded-xl bg-white text-slate-900 border border-slate-200 space-y-1.5">
+            <p class="font-bold text-blue-800">Multiplikation: ${fmt(a)} × ${fmt(b)}</p>
+            ${repeatInfo}
+            <p class="text-emerald-800 font-bold">Svar: ${fmt(res)}</p>
+          </div>`;
+      } else if (op === '/') {
+        html = `
+          <div class="p-3 rounded-xl bg-white text-slate-900 border border-slate-200 space-y-1.5">
+            <p class="font-bold text-blue-800">Division: ${fmt(a)} ÷ ${fmt(b)}</p>
+            <p>Vi delar upp <strong>${fmt(a)}</strong> i <strong>${fmt(b)}</strong> lika stora delar.</p>
+            <p>Kontroll: ${fmt(res)} × ${fmt(b)} = ${fmt(a)}</p>
+            <p class="text-emerald-800 font-bold">Varje del blir: ${fmt(res)}</p>
+          </div>`;
+      }
+      box.innerHTML = html;
+    }
+
+    // 6.2 Interaktiv Tallinje
+    function drawNumberLine() {
+      const svg = document.getElementById('numberLineSvg');
+      if (!svg) return;
+      const [minVal, maxVal, step] = document.getElementById('nlRangeSelect').value.split(',').map(Number);
+      const start = parseFloat(document.getElementById('nlStartInput').value) || 0;
+      const jump = parseFloat(document.getElementById('nlJumpInput').value) || 0;
+      const end = Math.round((start + jump) * 100) / 100;
+
+      const width = 800;
+      const padX = 50;
+      const lineY = 125;
+      const usableW = width - padX * 2;
+      const toX = val => padX + ((val - minVal) / (maxVal - minVal)) * usableW;
+
+      let svgContent = `<line x1="${padX}" y1="${lineY}" x2="${width - padX}" y2="${lineY}" stroke="#334155" stroke-width="3" stroke-linecap="round" />`;
+
+      // Graderingar
+      const count = Math.round((maxVal - minVal) / step);
+      for (let i = 0; i <= count; i++) {
+        const val = Math.round((minVal + i * step) * 100) / 100;
+        const x = toX(val);
+        svgContent += `
+          <line x1="${x}" y1="${lineY - 8}" x2="${x}" y2="${lineY + 8}" stroke="#334155" stroke-width="2" />
+          <text x="${x}" y="${lineY + 28}" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e293b">${String(val).replace('.', ',')}</text>
+        `;
+      }
+
+      // Rita båge om start och slut ryms i skalan
+      const clampedStart = Math.max(minVal, Math.min(maxVal, start));
+      const clampedEnd = Math.max(minVal, Math.min(maxVal, end));
+      const x1 = toX(clampedStart);
+      const x2 = toX(clampedEnd);
+      const midX = (x1 + x2) / 2;
+      const arcHeight = Math.min(75, Math.max(30, Math.abs(x2 - x1) * 0.35));
+      const arcColor = jump >= 0 ? '#15803d' : '#b91c1c';
+
+      if (jump !== 0) {
+        svgContent += `
+          <path d="M ${x1} ${lineY - 6} Q ${midX} ${lineY - 6 - arcHeight * 2} ${x2} ${lineY - 6}"
+                fill="none" stroke="${arcColor}" stroke-width="3.5" stroke-dasharray="6,3" />
+          <rect x="${midX - 34}" y="${lineY - arcHeight - 26}" width="68" height="24" rx="8" fill="${arcColor}" />
+          <text x="${midX}" y="${lineY - arcHeight - 10}" text-anchor="middle" font-size="13" font-weight="bold" fill="#ffffff">
+            ${jump > 0 ? '+' + String(jump).replace('.', ',') : String(jump).replace('.', ',')}
+          </text>
+        `;
+      }
+
+      // Start- och slutpunkter
+      svgContent += `
+        <circle cx="${x1}" cy="${lineY}" r="7" fill="#1d4ed8" />
+        <circle cx="${x2}" cy="${lineY}" r="8" fill="${arcColor}" stroke="#ffffff" stroke-width="2" />
+      `;
+
+      svg.innerHTML = svgContent;
+
+      const directionText = jump >= 0 ? 'framåt (åt höger)' : 'bakåt (åt vänster)';
+      document.getElementById('nlExplanationBox').innerHTML =
+        `Vi börjar på <strong>${String(start).replace('.', ',')}</strong> och hoppar <strong>${Math.abs(jump)}</strong> steg ${directionText}. Vi landar på <strong>${String(end).replace('.', ',')}</strong>.`;
+    }
+
+    // 6.3 Visuell Bråk-, Procent- & Decimalutforskare
+    function setFraction(num, den) {
+      document.getElementById('fracNumSlider').value = num;
+      document.getElementById('fracDenSlider').value = den;
+      updateFractionVisuals();
+    }
+
+    function updateFractionVisuals() {
+      const numSlider = document.getElementById('fracNumSlider');
+      const denSlider = document.getElementById('fracDenSlider');
+      let den = parseInt(denSlider.value, 10) || 4;
+      let num = parseInt(numSlider.value, 10) || 0;
+      if (num > den) {
+        num = den;
+        numSlider.value = num;
+      }
+      numSlider.max = den;
+
+      document.getElementById('fracNumDisplay').textContent = num;
+      document.getElementById('fracDenDisplay').textContent = den;
+
+      const decimalVal = num / den;
+      const percentVal = Math.round(decimalVal * 1000) / 10;
+
+      document.getElementById('equivFraction').textContent = `${num}/${den}`;
+      document.getElementById('equivDecimal').textContent = decimalVal.toFixed(2).replace('.', ',');
+      document.getElementById('equivPercent').textContent = `${String(percentVal).replace('.', ',')} %`;
+
+      document.getElementById('fractionPlainExplanation').innerHTML =
+        `<strong>Förklaring:</strong> Figuren är delad i <strong>${den}</strong> lika stora delar och <strong>${num}</strong> av dem är blåfärgade. Det är samma sak som <strong>${decimalVal.toFixed(2).replace('.', ',')}</strong> eller <strong>${String(percentVal).replace('.', ',')} %</strong>.`;
+
+      // Rita SVG-cirkel
+      const circleSvg = document.getElementById('fractionCircleSvg');
+      const cx = 80, cy = 80, r = 68;
+      let cHtml = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#f1f5f9" stroke="#334155" stroke-width="2.5" />`;
+
+      if (den === 1) {
+        if (num === 1) cHtml += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#2563eb" stroke="#334155" stroke-width="2.5" />`;
+      } else {
+        for (let i = 0; i < den; i++) {
+          const startAngle = (i * 2 * Math.PI) / den - Math.PI / 2;
+          const endAngle = ((i + 1) * 2 * Math.PI) / den - Math.PI / 2;
+          const x1 = cx + r * Math.cos(startAngle);
+          const y1 = cy + r * Math.sin(startAngle);
+          const x2 = cx + r * Math.cos(endAngle);
+          const y2 = cy + r * Math.sin(endAngle);
+          const largeArc = (endAngle - startAngle) > Math.PI ? 1 : 0;
+          const fill = i < num ? '#2563eb' : '#f8fafc';
+          cHtml += `<path d="M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z" fill="${fill}" stroke="#334155" stroke-width="2" />`;
+        }
+      }
+      circleSvg.innerHTML = cHtml;
+
+      // Rita SVG-rektangelstapel
+      const barSvg = document.getElementById('fractionBarSvg');
+      const barW = 180, barH = 48, startX = 10, startY = 16;
+      const cellW = barW / den;
+      let bHtml = '';
+      for (let i = 0; i < den; i++) {
+        const fill = i < num ? '#2563eb' : '#f8fafc';
+        bHtml += `<rect x="${startX + i * cellW}" y="${startY}" width="${cellW}" height="${barH}" fill="${fill}" stroke="#334155" stroke-width="2" />`;
+      }
+      barSvg.innerHTML = bHtml;
+    }
+
+    // 6.4 Enhetsomvandlare
+    const UNIT_DEFS = {
+      length: {
+        mm: { label: 'Millimeter (mm)', factor: 0.001 },
+        cm: { label: 'Centimeter (cm)', factor: 0.01 },
+        dm: { label: 'Decimeter (dm)', factor: 0.1 },
+        m:  { label: 'Meter (m)', factor: 1 },
+        km: { label: 'Kilometer (km)', factor: 1000 }
+      },
+      weight: {
+        g:  { label: 'Gram (g)', factor: 1 },
+        hg: { label: 'Hektogram (hg)', factor: 100 },
+        kg: { label: 'Kilogram (kg)', factor: 1000 }
+      },
+      volume: {
+        ml: { label: 'Milliliter (ml)', factor: 0.001 },
+        cl: { label: 'Centiliter (cl)', factor: 0.01 },
+        dl: { label: 'Deciliter (dl)', factor: 0.1 },
+        l:  { label: 'Liter (l)', factor: 1 }
+      },
+      time: {
+        min: { label: 'Minuter (min)', factor: 1 },
+        h:   { label: 'Timmar (h)', factor: 60 }
+      }
+    };
+
+    function populateUnitOptions() {
+      const cat = document.getElementById('unitCategory').value;
+      const units = UNIT_DEFS[cat];
+      const fromSel = document.getElementById('unitFromSelect');
+      const toSel = document.getElementById('unitToSelect');
+      fromSel.innerHTML = '';
+      toSel.innerHTML = '';
+
+      const keys = Object.keys(units);
+      keys.forEach(k => {
+        fromSel.add(new Option(units[k].label, k));
+        toSel.add(new Option(units[k].label, k));
+      });
+
+      if (keys.length >= 2) {
+        fromSel.value = keys[keys.length - 2];
+        toSel.value = keys[1];
+      }
+      calculateUnitConversion();
+    }
+
+    function calculateUnitConversion() {
+      const cat = document.getElementById('unitCategory').value;
+      const units = UNIT_DEFS[cat];
+      const val = parseFloat(document.getElementById('unitValueInput').value);
+      const fromKey = document.getElementById('unitFromSelect').value;
+      const toKey = document.getElementById('unitToSelect').value;
+      const card = document.getElementById('unitResultCard');
+
+      if (isNaN(val) || !units[fromKey] || !units[toKey]) {
+        card.innerHTML = '<p>Skriv in ett giltigt tal ovan.</p>';
+        return;
+      }
+
+      const ratio = units[fromKey].factor / units[toKey].factor;
+      const result = Math.round(val * ratio * 100000) / 100000;
+      const fmt = n => String(n).replace('.', ',');
+
+      let stepLine = '';
+      if (ratio >= 1) {
+        stepLine = `${fmt(val)} ${fromKey} × ${fmt(ratio)} = <strong>${fmt(result)} ${toKey}</strong>`;
+      } else {
+        const divBy = Math.round((1 / ratio) * 100000) / 100000;
+        stepLine = `${fmt(val)} ${fromKey} ÷ ${fmt(divBy)} = <strong>${fmt(result)} ${toKey}</strong>`;
+      }
+
+      card.innerHTML = `
+        <div class="text-xl sm:text-2xl font-bold ltr-math">${fmt(val)} ${fromKey} = ${fmt(result)} ${toKey}</div>
+        <p class="text-sm sm:text-base"><strong>Räkneled:</strong> <span class="ltr-math">${stepLine}</span></p>
+        <p class="text-xs sm:text-sm opacity-90">1 ${fromKey} motsvarar ${fmt(ratio)} ${toKey}.</p>
+      `;
+    }
+
+    // 6.5 Lösta räkneexempel steg för steg
+    const WORKED_EXAMPLES = [
+      {
+        problem: "En tröja kostar 400 kr. Det är 25 % rabatt i affären. Hur mycket kostar tröjan efter rabatten?",
+        steps: [
+          "Steg 1: 25 % är samma sak som en fjärdedel (1/4).",
+          "Steg 2: Räkna ut rabatten i kronor: 400 kr ÷ 4 = 100 kr i rabatt.",
+          "Steg 3: Dra bort rabatten från priset: 400 kr − 100 kr = 300 kr.",
+          "Svar: Tröjan kostar 300 kr."
+        ]
+      },
+      {
+        problem: "4 kompisar ska dela lika på 3 pizzor. Hur mycket pizza får var och en?",
+        steps: [
+          "Steg 1: Vi har 3 hela pizzor som ska delas i 4 lika stora delar.",
+          "Steg 2: Skriv det som ett bråk: 3 ÷ 4 = 3/4 (tre fjärdedels pizza var).",
+          "Steg 3: I procent är 3/4 samma sak som 75 % av en hel pizza.",
+          "Svar: Varje kompis får 3/4 pizza."
+        ]
+      },
+      {
+        problem: "En film börjar klockan 18:40 och är 1 timme och 35 minuter lång. När slutar filmen?",
+        steps: [
+          "Steg 1: Lägg först till 1 timme på 18:40 → då blir klockan 19:40.",
+          "Steg 2: Dela upp 35 minuter i 20 minuter + 15 minuter för att nå hel timme.",
+          "Steg 3: 19:40 + 20 minuter = 20:00. Lägg sedan till de sista 15 minuterna → 20:15.",
+          "Svar: Filmen slutar klockan 20:15."
+        ]
+      },
+      {
+        problem: "Räkna ut 48 + 27 genom att dela upp talen.",
+        steps: [
+          "Steg 1: Dela upp i tiotal och ental: 48 = 40 + 8 och 27 = 20 + 7.",
+          "Steg 2: Lägg ihop tiotalen: 40 + 20 = 60.",
+          "Steg 3: Lägg ihop entalen: 8 + 7 = 15.",
+          "Steg 4: Lägg ihop allt: 60 + 15 = 75. Svar: 75."
+        ]
+      }
+    ];
+
+    let activeExampleIdx = 0;
+    let revealedStepsCount = 1;
+
+    function loadWorkedExample() {
+      activeExampleIdx = parseInt(document.getElementById('workedExampleSelect').value, 10) || 0;
+      revealedStepsCount = 1;
+      renderWorkedExample();
+    }
+
+    function revealNextWorkedStep() {
+      const total = WORKED_EXAMPLES[activeExampleIdx].steps.length;
+      if (revealedStepsCount < total) {
+        revealedStepsCount++;
+        renderWorkedExample();
+      }
+    }
+
+    function renderWorkedExample() {
+      const ex = WORKED_EXAMPLES[activeExampleIdx];
+      document.getElementById('workedProblemText').textContent = ex.problem;
+      const container = document.getElementById('workedStepsContainer');
+      container.innerHTML = '';
+
+      for (let i = 0; i < revealedStepsCount; i++) {
+        const div = document.createElement('div');
+        const isLast = (i === ex.steps.length - 1);
+        div.className = isLast
+          ? 'p-3.5 rounded-xl bg-emerald-100 border-2 border-emerald-400 text-emerald-950 font-bold text-sm sm:text-base'
+          : 'p-3.5 rounded-xl bg-white text-slate-900 border border-slate-200 text-sm sm:text-base';
+        div.textContent = ex.steps[i];
+        container.appendChild(div);
+      }
+
+      document.getElementById('btnNextWorkedStep').disabled = (revealedStepsCount >= ex.steps.length);
+    }
+
+    // -------------------------------------------------------------------------
+    // 7. FLIK 3: SPRÅK & OFFLINE TEXTFÖRENKLING
+    // -------------------------------------------------------------------------
+    function importTextFromReader() {
+      const readerText = document.getElementById('rawTextInput').value.trim();
+      if (!readerText) {
+        showToast(currentUILang === 'sv' ? 'Det finns ingen text i Lässtödet att hämta.' : 'No text in Reading tab.');
+        return;
+      }
+      document.getElementById('langSupportInput').value = readerText;
+      analyzeLanguageSupportText();
+      showToast(currentUILang === 'sv' ? 'Text hämtad!' : 'Text imported!');
+    }
+
+    function analyzeLanguageSupportText() {
+      const raw = document.getElementById('langSupportInput').value.trim();
+      const listBox = document.getElementById('simplifiedSentencesList');
+      const kwBox = document.getElementById('extractedKeywordsBox');
+
+      if (!raw) {
+        listBox.innerHTML = `<p class="opacity-60 italic">${t('noTextYet')}</p>`;
+        kwBox.innerHTML = '';
+        return;
+      }
+
+      const sentences = raw.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [raw];
+      listBox.innerHTML = sentences
+        .map(s => s.trim())
+        .filter(Boolean)
+        .map(s => `<div class="flex items-start gap-2"><span class="text-blue-700 font-bold">•</span><span>${escapeHtml(s)}</span></div>`)
+        .join('');
+
+      // Plocka ut längre ord (7+ bokstäver) och visa stavelser
+      const words = raw.match(/[A-Za-zÅÄÖåäö]{7,}/g) || [];
+      const uniqueLong = [...new Set(words.map(w => w.toLowerCase()))].slice(0, 6);
+      if (uniqueLong.length > 0) {
+        kwBox.innerHTML = `
+          <p class="text-xs font-bold pt-1">Längre ord uppdelade i stavelser:</p>
+          <div class="flex flex-wrap gap-1.5">
+            ${uniqueLong.map(w => `<span class="px-2.5 py-1 rounded-lg bg-blue-100 text-blue-950 text-xs font-semibold">${escapeHtml(splitIntoSyllables(w))}</span>`).join('')}
+          </div>
+        `;
+      } else {
+        kwBox.innerHTML = '';
+      }
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+    }
+
+    function copyTextForTranslation() {
+      const text = document.getElementById('langSupportInput').value.trim();
+      if (!text) {
+        showToast(currentUILang === 'sv' ? 'Skriv eller klistra in text först.' : 'Enter text first.');
+        return;
+      }
+      copyStringToClipboard(text);
+    }
+
+    function speakLanguageTabText() {
+      const text = document.getElementById('langSupportInput').value.trim();
+      if (!text || !('speechSynthesis' in window)) return;
+      const targetLang = document.getElementById('targetTranslateLang').value;
+      window.speechSynthesis.cancel();
+
+      const u = new SpeechSynthesisUtterance(text);
+      const matchingVoice = availableVoices.find(v => v.lang.toLowerCase().startsWith(targetLang));
+      if (matchingVoice) {
+        u.voice = matchingVoice;
+        u.lang = matchingVoice.lang;
+      } else {
+        u.lang = targetLang;
+        showToast(`Ingen installerad röst hittades för "${targetLang}". Försöker med standardröst.`);
+      }
+      u.rate = 0.9;
+      window.speechSynthesis.speak(u);
+    }
+
+    // -------------------------------------------------------------------------
+    // 8. INITIERING VID SIDLADDNING
+    // -------------------------------------------------------------------------
+    window.addEventListener('DOMContentLoaded', () => {
+      populateVoices();
+      updateDyslexiaStyle();
+      loadSampleText();
+      populateUnitOptions();
+      updateFractionVisuals();
+      drawNumberLine();
+      loadWorkedExample();
+    });
+  </script>
+</body>
+</html>
